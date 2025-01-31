@@ -23,6 +23,9 @@ rule frag_to_tagAlign:
 				"{cluster}",
 				"cell_count.txt"
 			))
+		processed_fragments = temp(os.path.join(RESULTS_DIR, "{cluster}", "atac_fragments.chr_filtered.sorted.tsv.gz"))
+	params:
+		chrSizes = encode_e2g_config["chr_sizes"]
 	conda:
 		"../envs/sc_e2g.yml"
 	threads: 8
@@ -37,12 +40,19 @@ rule frag_to_tagAlign:
 	shell:
 		"""
 		# Make, sort and compress tagAlign file from fragment file
-		LC_ALL=C zcat {input.frag_file}  | sed '/^#/d' | \
-		awk -v OFS='\t' '{{mid=int(($2+$3)/2); print $1,$2,mid,"N",1000,"+"; print $1,mid+1,$3,"N",1000,"-"}}' | \
-		sort -k 1,1V -k 2,2n -k3,3n --parallel {threads} -T {resources.temp_dir} | \
-		bgzip -c > {output.tagAlign_sort_file}  
+		LC_ALL=C 
+		
+		# save chr-filtered & sorted fragment file for later use
+		chr_list=$(cut -f1 {params.chrSizes} | sort | uniq)
+		zcat {input.frag_file} | sed '/^#/d' | awk -v chr_list="$chr_list" '$1 ~ chr_list' | \ # remove header, filter chromosomes
+			sort -k 1,1V -k 2,2n -k3,3n --parallel {threads} -T {resources.temp_dir} | \ # sort
+			gzip > {output.processed_fragments}
 
-		# get fragment & cell count
+		zcat {output.processed_fragments} | \
+			awk -v OFS='\t' '{{mid=int(($2+$3)/2); print $1,$2,mid,"N",1000,"+"; print $1,mid+1,$3,"N",1000,"-"}}' | \
+			bgzip -c > {output.tagAlign_sort_file}  
+
+		# get fragment & cell count (of unfiltered fragments)
 		zcat {input.frag_file} | awk '$1 !~ /_/' | wc -l > {output.fragment_count}
 		zcat {input.frag_file} | awk '$1 !~ /_/' | cut -f4 | sort -u | wc -l > {output.cell_count}
 
@@ -53,7 +63,7 @@ rule frag_to_tagAlign:
 ## create bigwig from fragment file
 rule frag_to_bigWig:
 	input:
-		frag_file = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"]
+		processed_fragments = temp(os.path.join(RESULTS_DIR, "{cluster}", "atac_fragments.chr_filtered.sorted.tsv.gz"))
 	params:
 		chrSizes = encode_e2g_config["chr_sizes"]
 	output:
@@ -68,16 +78,15 @@ rule frag_to_bigWig:
 	shell:
 		"""
 			LC_ALL=C
-			# remove alt chromosomes
-			zcat {input.frag_file} | awk '$1 !~ /_/' | \
-				bedtools genomecov -bg -i stdin -g {params.chrSizes} | \
-				sort -k1,1 -k2,2n --parallel={threads} > {output.bedGraph_file}
+			zcat {input.processed_fragments} | \
+				bedtools genomecov -bg -i stdin -g {params.chrSizes} > {output.bedGraph_file}
+				#sort -k1,1 -k2,2n --parallel={threads} > {output.bedGraph_file} # redundant now
 			bedGraphToBigWig {output.bedGraph_file} {params.chrSizes} {output.bigWig_file}
 		"""
 
 rule frag_to_norm_bigWig:
 	input:
-		frag_file = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"],
+		processed_fragments = temp(os.path.join(RESULTS_DIR, "{cluster}", "atac_fragments.chr_filtered.sorted.tsv.gz")),
 		fragment_count = os.path.join(RESULTS_DIR, "{cluster}", "fragment_count.txt")
 	params:
 		chrSizes = encode_e2g_config["chr_sizes"]
@@ -96,9 +105,8 @@ rule frag_to_norm_bigWig:
 			frag_count=$(<{input.fragment_count})
 			scale_factor=$(echo "1000000 / $frag_count" | bc -l)
 
-			# remove alt chromosomes
-			zcat {input.frag_file} | awk '$1 !~ /_/' | \
-				bedtools genomecov -bg -i stdin -g {params.chrSizes} -scale $scale_factor| \
-				sort -k1,1 -k2,2n --parallel={threads} > {output.bedGraph_file}
+			zcat {input.processed_fragments} | \
+				bedtools genomecov -bg -i stdin -g {params.chrSizes} -scale $scale_factor > {output.bedGraph_file}
+				#sort -k1,1 -k2,2n --parallel={threads} > {output.bedGraph_file} # redundant now
 			bedGraphToBigWig {output.bedGraph_file} {params.chrSizes} {output.bigWig_file}
 		"""
