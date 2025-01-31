@@ -44,8 +44,9 @@ rule frag_to_tagAlign:
 		
 		# save chr-filtered & sorted fragment file for later use
 		chr_list=$(cut -f1 {params.chrSizes} | sort | uniq)
-		zcat {input.frag_file} | sed '/^#/d' | awk -v chr_list="$chr_list" '$1 ~ chr_list' | \ # remove header, filter chromosomes
-			sort -k 1,1V -k 2,2n -k3,3n --parallel {threads} -T {resources.temp_dir} | \ # sort
+		# remove header, filter chromosomes
+		zcat {input.frag_file} | sed '/^#/d' | awk -v chr_list="$chr_list" '$1 ~ chr_list' | \ 
+			sort -k 1,1V -k 2,2n -k3,3n --parallel {threads} -T {resources.temp_dir} | \
 			gzip > {output.processed_fragments}
 
 		zcat {output.processed_fragments} | \
@@ -80,7 +81,6 @@ rule frag_to_bigWig:
 			LC_ALL=C
 			zcat {input.processed_fragments} | \
 				bedtools genomecov -bg -i stdin -g {params.chrSizes} > {output.bedGraph_file}
-				#sort -k1,1 -k2,2n --parallel={threads} > {output.bedGraph_file} # redundant now
 			bedGraphToBigWig {output.bedGraph_file} {params.chrSizes} {output.bigWig_file}
 		"""
 
@@ -107,6 +107,5 @@ rule frag_to_norm_bigWig:
 
 			zcat {input.processed_fragments} | \
 				bedtools genomecov -bg -i stdin -g {params.chrSizes} -scale $scale_factor > {output.bedGraph_file}
-				#sort -k1,1 -k2,2n --parallel={threads} > {output.bedGraph_file} # redundant now
 			bedGraphToBigWig {output.bedGraph_file} {params.chrSizes} {output.bigWig_file}
 		"""
