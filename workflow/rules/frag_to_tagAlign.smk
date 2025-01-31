@@ -22,7 +22,7 @@ rule frag_to_tagAlign:
 				RESULTS_DIR,
 				"{cluster}",
 				"cell_count.txt"
-			))
+			)),
 		processed_fragments = temp(os.path.join(RESULTS_DIR, "{cluster}", "atac_fragments.chr_filtered.sorted.tsv.gz"))
 	params:
 		chrSizes = encode_e2g_config["chr_sizes"]
