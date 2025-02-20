@@ -8,3 +8,5 @@ workflow/scripts/mine/
 *.dot
 *.png
 test
+config/tables/
+config/config_*_e2g.yaml
