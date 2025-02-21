@@ -65,7 +65,7 @@ def get_e2g_config(config, encode_re2g_dir):
         This function reads the ENCODE_rE2G configuration file, updates certain paths with values from 
         the provided `config`, and returns the updated configuration.
 
-        :param config: Configuration of sc-E2G.
+        :param config: Configuration of scE2G.
         :param encode_re2g_dir: Path to the ENCODE_rE2G directory.
 	"""
 
@@ -80,25 +80,29 @@ def get_e2g_config(config, encode_re2g_dir):
 	e2g_config["results_dir"] = config["results_dir"]
 	e2g_config["model_dir"] = config["model_dir"]
 	e2g_config["final_score_col"] = config["final_score_col"]
+
+	# If files specified in scE2G, update ENCODE_rE2G
+	if "gene_TSS500" in config:
+		e2g_config["gene_TSS500"] = config["gene_TSS500"]
+	if "genes" in config:
+		e2g_config["genes"] = config["genes"]
+	if "crispr_dataset" in config:
+		e2g_config["crispr_dataset"] = config["crispr_dataset"]
+	
 	return e2g_config
 
-# return path to CRISPR 
-def get_crispr_file(encode_re2g_dir):
-	e2g_config_file = os.path.join(encode_re2g_dir, "config/config_training.yaml")
-	with open(e2g_config_file, 'r') as stream:
-		e2g_config = yaml.safe_load(stream)
+# update scE2G config to have consistent gene reference files to E2G 
+def update_scE2G_config(config, e2g_config, encode_re2g_dir):
+	if "crispr_dataset" not in config:
+		config["crispr_dataset"] = os.path.join(encode_re2g_dir, e2g_config["crispr_dataset"])
 	
-	crispr_features = os.path.join(encode_re2g_dir, e2g_config["crispr_dataset"])
-	return crispr_features
+	if "gene_TSS500" not in config:
+		config["gene_TSS500"] = os.path.join(encode_re2g_dir, e2g_config["gene_TSS500"])
 
-# return path to chr sizes 
-def get_chr_sizes(encode_re2g_dir):
-	e2g_config_file = os.path.join(encode_re2g_dir, "config/config.yaml")
-	with open(e2g_config_file, 'r') as stream:
-		e2g_config = yaml.safe_load(stream)
-	
-	chr_sizes = os.path.join(encode_re2g_dir, e2g_config["chr_sizes"])
-	return chr_sizes
+	if "chr_sizes" not in config:
+		config["chr_sizes"] = os.path.join(encode_re2g_dir, e2g_config["chr_sizes"])
+
+	return config
 
 
 # decide whether ARC-E2G should use "ABC.Score" or "powerlaw.Score"

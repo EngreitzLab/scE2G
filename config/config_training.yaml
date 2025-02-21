@@ -2,9 +2,17 @@
 ### INPUT
 cell_clusters: "config/config_cell_clusters.tsv"
 model_config: "config/config_models.tsv"
+gene_annotations: "resources/gencode.v43.chr_patch_hapl_scaff.annotation.gtf.gz"
+
 
 ### OUTPUT
 results_dir: "results/example_results/"
+
+### REFERENCE FILES
+gene_annotations: "resources/genome_annotations/gencode.v43.chr_patch_hapl_scaff.annotation.gtf.gz" # compatible with RNA matrix
+gene_TSS500: "resources/genome_annotations/CollapsedGeneBounds.hg38.intGENCODEv43.TSS500bp.bed" # gene list with promoter bounds
+genes: "resources/genome_annotations/CollapsedGeneBounds.hg38.intGENCODEv43.bed" # gene list with gene body bounds 
+crispr_dataset: "resources/EPCrisprBenchmark_ensemble_data_GRCh38.intGENCODEv43.tsv.gz" # crispr training data
 
 ### PARAMS
 encode_re2g_dir: "ENCODE_rE2G"

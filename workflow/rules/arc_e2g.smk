@@ -28,4 +28,4 @@ rule arc_e2g:
 	conda:
 		"../envs/sc_e2g.yml"
 	script:
-		"../scripts/compute_arc_e2g.R"
+		"../scripts/feature_computation/compute_arc_e2g.R"

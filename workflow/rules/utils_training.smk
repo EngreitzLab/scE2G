@@ -20,6 +20,15 @@ def get_e2g_training_config(config, encode_re2g_dir):
 	e2g_config["run_feature_analysis"] = config["run_feature_analysis"]
 	e2g_config["reference_features"] = config["reference_features"]
 	e2g_config["final_score_col"] = config["final_score_col"]
+
+	# If files specified in scE2G, update ENCODE_rE2G config
+	if "gene_TSS500" in config:
+		e2g_config["gene_TSS500"] = config["gene_TSS500"]
+	if "genes" in config:
+		e2g_config["genes"] = config["genes"]
+	if "crispr_dataset" in config:
+		e2g_config["crispr_dataset"] = config["crispr_dataset"]
+
 	return e2g_config
 
 

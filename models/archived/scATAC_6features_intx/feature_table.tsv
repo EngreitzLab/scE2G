@@ -1,7 +1,0 @@
-feature	input_col	second_input	aggregate_function	fill_value	nice_name
-distanceToTSS_x_normalizedATAC_prom	distance	normalized_atac_prom	mean	0	Distance to TSS * ATAC at P
-distanceToTSS_x_ABC	distance	powerlaw.Score	mean	0	Distance to TSS * ABC score
-numCandidateEnhGene	numCandidateEnhGene	NA	max	0	# peaks between E & P
-numTSSEnhGene	numTSSEnhGene	NA	max	0	# TSSs between E & P
-ubiqExpressed_x_numCandidateEnhGene	is_ubiquitous_uniform	numCandidateEnhGene	max	0	Ubiquitous expression * # peaks between E & P
-numCandidateEnhGene_2	numCandidateEnhGene	numCandidateEnhGene	max	0	(# peaks between E & P)^2

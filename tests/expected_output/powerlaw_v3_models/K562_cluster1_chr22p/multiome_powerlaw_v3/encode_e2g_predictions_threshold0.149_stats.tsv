@@ -1,0 +1,2 @@
+n_enh_elements	n_genes_with_enh	n_enh_gene_links	mean_genes_per_enh	mean_enh_per_gene	mean_dist_to_tss	mean_enh_width	n_genes_active_promoter	n_genes_not_expressed	cluster	model_name	fragments_total	cell_count	umi_count
+0	0	0					20494	20433	K562_chr22p_cluster1	multiome_powerlaw_v3	4445	480	8860991

@@ -16,21 +16,26 @@ jobs:
     resource_class: large
     steps:
       - checkout
-      - run: git submodule sync
-      - run: git submodule update --init
+      - run: git submodule sync --recursive
+      - run: git submodule update --init --recursive
       - run:
           name: Install basic OS pkgs
           command: apt-get update && apt-get -y install curl vim
+      # - run:
+      #     name: Run Linter (python black)
+      #     command: |
+      #       mamba install black
+      #       black . --check
       - run:
-          name: Run Linter (python black)
-          command: |
-            mamba install black
-            black . --check
-      - run:
-          name: Install env
+          name: Install run_snakemake env
           no_output_timeout: 30m
           command: |
-            mamba env create -f workflow/envs/sc_e2g.yml
+            mamba env create -f workflow/envs/run_snakemake.yml
+      - run:
+          name: Run tests
+          no_output_timeout: 45m
+          command: |
+            conda run -n run_snakemake pytest -s -n 4 tests/
 
 workflows:
   my-workflow:

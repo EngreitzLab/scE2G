@@ -1,0 +1,2 @@
+cluster	rna_matrix_file	atac_frag_file	HiC_file	HiC_type	HiC_resolution	alt_TSS	alt_genes	model_dir
+K562_cluster1_chr22p	resources/example_chr22_multiome_cluster/cluster1/rna_count_matrix.csv.gz	resources/example_chr22p_multiome_cluster/atac_fragments.tsv.gz						models/multiome_powerlaw_v3,models/scATAC_powerlaw_v3

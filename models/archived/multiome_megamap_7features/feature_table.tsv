@@ -1,8 +1,0 @@
-feature	input_col	second_input	aggregate_function	fill_value	nice_name
-numTSSEnhGene	numTSSEnhGene	NA	max	0	# TSSs between E and P
-distanceToTSS	distance	NA	min	NA	Distance to TSS
-normalizedATAC_enh	normalized_atac_enh	NA	mean	0	ATAC signal at E
-normalizedATAC_prom	TargetGenePromoterActivityQuantile	NA	mean	0	ATAC signal at P (quantile)
-ubiqExpressed	is_ubiquitous_uniform	NA	max	0	Ubiquitous expression
-numCandidateEnhGene	numCandidateEnhGene	NA	max	0	# peaks between E and P
-ARC.E2G.Score	ARC.E2G.Score	NA	mean	0	ARC-E2G score

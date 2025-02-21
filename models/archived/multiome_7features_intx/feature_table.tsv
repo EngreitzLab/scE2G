@@ -1,8 +1,0 @@
-feature	input_col	second_input	aggregate_function	fill_value	nice_name
-ARC.E2G.Score	ARC.E2G.Score	NA	mean	0	ARC-E2G score
-ubiqExpressed_x_ARC	is_ubiquitous_uniform	ARC.E2G.Score	mean	0	Ubiquitous expression * ARC-E2G score
-numTSSEnhGene_x_ARC	numTSSEnhGene	ARC.E2G.Score	mean	0	# TSSs between E & P * ARC-E2G score
-numCandidateEnhGene_x_ARC	numCandidateEnhGene	ARC.E2G.Score	mean	0	# peaks between E & P * ARC-E2G score
-normalizedATAC_enh_x_prom	normalized_atac_enh	normalized_atac_prom	mean	0	ATAC at E * ATAC at P
-numCandidateEnhGene_2	numCandidateEnhGene	numCandidateEnhGene	max	0	(# peaks between E & P)^2
-numTSSEnhGene	numTSSEnhGene	NA	max	0	# TSSs between E & P

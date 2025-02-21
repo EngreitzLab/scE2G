@@ -43,15 +43,17 @@ make_biosample_config(
 
 ## Import ENCODE_rE2G pipeline as a reusable module 
 encode_e2g_config = get_e2g_config(config, config["encode_re2g_dir"])
-config["crispr_dataset"] = get_crispr_file( config["encode_re2g_dir"])
 
 module encode_e2g:
 	snakefile:
 		os.path.join(config["encode_re2g_dir"], "workflow", "Snakefile")
 	config: encode_e2g_config
 
+## Update scE2G config with consistent references
+config = update_scE2G_config(config, encode_e2g_config, config["encode_re2g_dir"])
+
 ## Include Snakemake rules from ENCODE_rE2G
-use rule * from encode_e2g exclude generate_e2g_predictions, format_external_features_config, all
+use rule * from encode_e2g exclude generate_e2g_predictions, format_external_features_config, get_stats, generate_plots, all
 
 # expand biosamples config
 BIOSAMPLE_DF = pd.read_table(config["ABC_BIOSAMPLES"])
@@ -74,7 +76,9 @@ biosample_model_threshold = list(zip(BIOSAMPLE_DF["biosample"], BIOSAMPLE_DF["mo
 
 encode_e2g_predictions = [os.path.join(RESULTS_DIR, biosample, model_name, "encode_e2g_predictions.tsv.gz") for biosample,model_name in biosample_model]
 prediction_stats = [os.path.join(RESULTS_DIR, biosample, model_name, f"encode_e2g_predictions_threshold{threshold}_stats.tsv") for biosample,model_name,threshold in biosample_model_threshold]
-plots = os.path.join(RESULTS_DIR, "qc_plots.pdf")
+gene_lists = [os.path.join(RESULTS_DIR, biosample, model_name, "scE2G_gene_list.tsv.gz") for biosample,model_name in biosample_model]
+element_lists = [os.path.join(RESULTS_DIR, biosample, model_name, "scE2G_element_list.tsv.gz") for biosample,model_name in biosample_model]
+all_qc = os.path.join(RESULTS_DIR, "qc_plots", "all_qc_stats.tsv")
 
 bedpe_files = [os.path.join(IGV_DIR, biosample, model_name, f"encode_e2g_predictions_threshold{threshold}.bedpe") for biosample,model_name,threshold in biosample_model_threshold]
 atac_bw = [os.path.join(IGV_DIR, biosample, "ATAC.bw") for biosample in BIOSAMPLE_DF["biosample"]]
@@ -84,7 +88,6 @@ model_perf = os.path.join(RESULTS_DIR, "crispr_benchmarking_performance_summary.
 
 ## Choose relevant output files
 output_files.extend(encode_e2g_predictions)
-#output_files.extend(prediction_stats)
 output_files.append(plots)
 
 if config["make_IGV_tracks"]:

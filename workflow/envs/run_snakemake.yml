@@ -1,0 +1,12 @@
+name: run_snakemake
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+  - anaconda
+  - r
+dependencies:
+  - python<=3.11
+  - mamba=1.5.11
+  - snakemake=7
+  - pytest-xdist

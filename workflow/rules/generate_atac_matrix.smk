@@ -26,4 +26,4 @@ rule generate_atac_matrix:
 	conda:
 		"../envs/sc_e2g.yml"
 	script:
-		"../scripts/generate_atac_matrix.R"
+		"../scripts/feature_computation/generate_atac_matrix.R"

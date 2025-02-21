@@ -26,6 +26,6 @@ rule make_kendall_pairs:
 	conda:
 		"../envs/sc_e2g.yml"
 	script:
-		"../scripts/make_kendall_pairs.R"
+		"../scripts/feature_computation/make_kendall_pairs.R"
 
 
