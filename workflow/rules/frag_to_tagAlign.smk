@@ -4,6 +4,7 @@ rule frag_to_tagAlign:
 		frag_file = 
 			lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"]
 	output:
+		touch(os.path.join(RESULTS_DIR, "{cluster}", "tagAlign", "frag_to_tagAlign.done")),
 		tagAlign_sort_file = 
 			os.path.join(
 				RESULTS_DIR, 
@@ -16,7 +17,7 @@ rule frag_to_tagAlign:
 	threads: 8
 	resources:
 		mem_mb=determine_mem_mb,
-		runtime=720*2
+		runtime_hr=24
 	shell:
 		"""
 		# Make, sort and compress tagAlign file from fragment file
