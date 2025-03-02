@@ -88,6 +88,12 @@ def get_e2g_config(config, encode_re2g_dir):
 		e2g_config["genes"] = config["genes"]
 	if "crispr_dataset" in config:
 		e2g_config["crispr_dataset"] = config["crispr_dataset"]
+	if "chr_sizes" in config:
+		e2g_config["chr_sizes"] = config["chr_sizes"]
+	if "regions_blocklist" in config:
+		e2g_config["regions_blocklist"] = config["regions_blocklist"]
+	if "macs2_genomesize" in config:
+		e2g_config["macs2_genomesize"] = config["macs2_genomesize"]
 	
 	return e2g_config
 
