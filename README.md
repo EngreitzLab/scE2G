@@ -23,8 +23,7 @@ git config --global submodule.recurse true
 ```
 
 When running for the first time, the conda environments have to be setup. 
-We highly recommend using the environment specified in `workflow/envs/run_snakemake.yml`, which specifies the exact package versions compatible with the pipeline.
-For speed, we include mamba in this recommended environment.
+We highly recommend running scE2G using the environment specified in `workflow/envs/run_snakemake.yml`, which specifies the exact package versions compatible with the pipeline.
 
 ```
 conda config --set channel_priority flexible  # Make sure your conda config uses flexible channel packaging to prevent unsatisfiable errors
