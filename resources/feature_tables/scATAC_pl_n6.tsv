@@ -1,7 +1,0 @@
-feature	input_col	second_input	aggregate_function	fill_value	nice_name
-numTSSEnhGene	numTSSEnhGene	NA	max	0	# TSSs between E and P
-normalizedATAC_prom	normalized_atac_prom	NA	mean	0	ATAC signal at P
-numNearbyEnhancers	numNearbyEnhancers	NA	max	0	# peaks within 5Kb of E
-ubiqExpressed	is_ubiquitous_uniform	NA	max	0	Ubiquitous expression
-numCandidateEnhGene	numCandidateEnhGene	NA	max	0	# peaks between E and P
-ABC.Score	powerlaw.Score	NA	sum	0	ABC score
