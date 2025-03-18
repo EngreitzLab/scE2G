@@ -31,7 +31,7 @@ EXPECTED_OUTPUT_DIR = f"tests/expected_output/{CONFIG['TEST_CONFIG_NAME']}"
 # THRESHOLDED_PRED_FILE_PATTERN = (
 #     "K562_chr22_cluster1/multiome_powerlaw_v2/encode_e2g_predictions_threshold*[0-9].tsv.gz"
 # )
-THRESHOLDED_PRED_FILE = "multiome_powerlaw_v3/encode_e2g_predictions_threshold0.149.tsv.gz"
+THRESHOLDED_PRED_FILE = "multiome_powerlaw_v3/encode_e2g_predictions_threshold0.177.tsv.gz"
 
 class scE2GTest(unittest.TestCase):
     def compare_prediction_file(self, biosample: str, pred_file) -> None:
