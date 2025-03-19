@@ -30,7 +30,7 @@ def performance_summary(
         n_zero_pos = crispr_pos.loc[crispr_features["ABC.Score"] == 0].shape[0]
         n_zero_neg = crispr_neg.loc[crispr_features["ABC.Score"] == 0].shape[0]
         crispr_features["score_column_to_use"] = crispr_features["ABC.Score"]
-    elif model_name == "multiome_powerlaw_v2_noTPMfilter":
+    elif model_name == "multiome_powerlaw_v3_noTPMfilter":
         n_zero_pos = crispr_pos.loc[
             (crispr_features["ARC.E2G.Score"] == 0)
             | (crispr_features["E2G.Score.cv"] == 0)
@@ -207,7 +207,7 @@ def main(crispr_features, output_file, model_names, model_thresholds):
     sc_e2g = [
         m
         for m in all_models
-        if m in ["multiome_powerlaw_v2", "scATAC_powerlaw_v2", "multiome_megamap_v2"]
+        if m in ["multiome_powerlaw_v3", "scATAC_powerlaw_v3", "multiome_megamap_v3"]
     ]
 
     if len(sc_e2g) > 0:
@@ -216,9 +216,9 @@ def main(crispr_features, output_file, model_names, model_thresholds):
         filt["model_threshold"] = 0.015
         preds = pd.concat([preds, filt])
 
-    if "multiome_powerlaw_v2" in all_models:
-        filt = preds.loc[preds["model_name"] == "multiome_powerlaw_v2"]
-        filt["model_name"] = "multiome_powerlaw_v2_noTPMfilter"
+    if "multiome_powerlaw_v3" in all_models:
+        filt = preds.loc[preds["model_name"] == "multiome_powerlaw_v3"]
+        filt["model_name"] = "multiome_powerlaw_v3_noTPMfilter"
         preds = pd.concat([preds, filt])
 
     # initiate final df
