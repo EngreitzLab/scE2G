@@ -56,7 +56,10 @@ config = update_scE2G_config(config, encode_e2g_config, config["encode_re2g_dir"
 use rule * from encode_e2g exclude generate_e2g_predictions, format_external_features_config, get_stats, generate_plots, all
 
 # expand biosamples config
-BIOSAMPLE_DF = pd.read_table(config["ABC_BIOSAMPLES"])
+BIOSAMPLE_DF = encode_e2g.ABC.enable_retry(
+	pd.read_table, 
+	func_args={'filepath_or_buffer': config["ABC_BIOSAMPLES"]}
+)
 BIOSAMPLE_DF = encode_e2g.expand_biosample_df(BIOSAMPLE_DF)
 
 ## Include additional Snakemake rules
