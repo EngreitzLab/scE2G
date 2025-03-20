@@ -216,7 +216,7 @@ pairs.E2G = kendall_mutliple_genes(pairs.E2G,
 mcols(pairs.E2G)[,c("mean_log_normalized_rna",
                     "RnaDetectedPercent",
                     "RnaPseudobulkTPM")] = 
-  df.exp_inf[pairs.E2G$TargetGene,]
+  df.exp_filt[pairs.E2G$TargetGene,]
 
 # Write output to file
 df.pairs.E2G = 
