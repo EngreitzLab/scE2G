@@ -95,7 +95,8 @@ plot_scatter_set <- function(stats, x_vars, x_thresh, y_vars, colors, label_key,
 				geom_point(aes(color = model_name), shape = 16, size = 3) +
 				labs(x = label_key[x], y = label_key[y]) +
 				scale_color_manual(values = colors) +
-				scale_x_log10(limits = c(1e-10, x_max)) +
+				#scale_x_log10(limits = c(1e-10, x_max)) +
+				scale_x_log10() +
 				theme_classic() + theme(axis.text = element_text(size = 7), axis.title = element_text(size = 8), axis.ticks = element_line(color = "#000000"),
 					aspect.ratio = 1, legend.position = "bottom")
 
