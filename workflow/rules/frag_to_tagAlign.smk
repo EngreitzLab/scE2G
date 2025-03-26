@@ -1,7 +1,14 @@
+def get_processed_fragment_file(wildcards):
+	if config["preprocessed_fragments"]:
+		fp = CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"]
+	else:
+		fp = os.path.join(RESULTS_DIR, wildcards.cluster, "fragments_filtered.tsv.gz")
+	return fp
+
 ## Convert fragment file to tagAlign file
 rule frag_to_tagAlign:
 	input:
-		frag_file = os.path.join(RESULTS_DIR, "{cluster}", "fragments_filtered.tsv.gz")
+		frag_file = get_processed_fragment_file
 	output:
 		tagAlign_sort_file = 
 			os.path.join(
@@ -33,41 +40,51 @@ rule frag_to_tagAlign:
 		tabix -p bed {output.tagAlign_sort_file}
 		"""
 
-## get fragment & cell count
-rule process_fragment_file:
-	input:
-		frag_file = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"]
-	params:
-		chrSizes = config["chr_sizes"]
-	output:
-		fragment_count = temp(os.path.join(RESULTS_DIR, "{cluster}", "fragment_count.txt")),
-		cell_count = temp(os.path.join(RESULTS_DIR, "{cluster}", "cell_count.txt")),
-		fragments_filtered = temp(os.path.join(RESULTS_DIR, "{cluster}", "fragments_filtered.tsv.gz"))
-	threads: 8
-	resources:
-		mem_mb=determine_mem_mb,
-		runtime=720*2,
-		temp_dir = 
-			os.path.join(
-				RESULTS_DIR,
-				"tmp"
-		)
-	conda: 
-		"../envs/sc_e2g.yml"
-	shell:
-		"""
-		LC_ALL=C 
-		# get fragment & cell count
-		awk 'NR==FNR {{keep[$1]; next}} $1 in keep' {params.chrSizes} <(zcat {input.frag_file})  | gzip > {output.fragments_filtered}
-		zcat {output.fragments_filtered} | wc -l > {output.fragment_count}
-		zcat {output.fragments_filtered} | cut -f4 | sort -u | wc -l > {output.cell_count}
-		"""
+## get fragment cell count
+if config["preprocessed_fragments"]:
+	rule get_fragment_count:
+		input:
+			frag_file = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"]
+		resources: mem_mb=determine_mem_mb
+		output:
+			fragment_count = temp(os.path.join(RESULTS_DIR, "{cluster}", "fragment_count.txt")),
+		shell:
+			"""
+				zcat {input.frag_file} | wc -l > {output.fragment_count}
+			"""
 
+else:
+	rule process_fragment_file:
+		input:
+			frag_file = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"]
+		params:
+			chrSizes = config["chr_sizes"]
+		output:
+			fragment_count = temp(os.path.join(RESULTS_DIR, "{cluster}", "fragment_count.txt")),
+			fragments_filtered = temp(os.path.join(RESULTS_DIR, "{cluster}", "fragments_filtered.tsv.gz"))
+		threads: 8
+		resources:
+			mem_mb=determine_mem_mb,
+			runtime=720*2,
+			temp_dir = 
+				os.path.join(
+					RESULTS_DIR,
+					"tmp"
+			)
+		conda: 
+			"../envs/sc_e2g.yml"
+		shell:
+			"""
+			LC_ALL=C 
+			# get fragment & cell count
+			awk 'NR==FNR {{keep[$1]; next}} $1 in keep' {params.chrSizes} <(zcat {input.frag_file})  | gzip > {output.fragments_filtered}
+			zcat {output.fragments_filtered} | wc -l > {output.fragment_count}
+			"""
 
 ## create bigwig from fragment file
 rule frag_to_bigWig:
 	input:
-		frag_file = os.path.join(RESULTS_DIR, "{cluster}", "fragments_filtered.tsv.gz")
+		frag_file = get_processed_fragment_file
 	params:
 		chrSizes = config["chr_sizes"]
 	output:
@@ -90,7 +107,7 @@ rule frag_to_bigWig:
 
 rule frag_to_norm_bigWig:
 	input:
-		frag_file = os.path.join(RESULTS_DIR, "{cluster}", "fragments_filtered.tsv.gz"),
+		frag_file = get_processed_fragment_file,
 		fragment_count = os.path.join(RESULTS_DIR, "{cluster}", "fragment_count.txt")
 	params:
 		chrSizes = config["chr_sizes"]

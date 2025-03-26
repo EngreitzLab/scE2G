@@ -160,6 +160,7 @@ gene_gtf_path = snakemake@params$gene_gtf
 abc_genes_path = snakemake@params$abc_genes
 kendall_predictions_path = snakemake@output$kendall_predictions
 umi_count_path = snakemake@output$umi_count
+cell_count_path = snakemake@output$cell_count
 
 # Load candidate E-G pairs
 pairs.E2G = readGeneric(kendall_pairs_path,
@@ -186,9 +187,13 @@ if (file_ext(rna_matrix_path) %in% c("h5ad", "h5")) {
 }
 
 matrix.rna_count = matrix.rna_count[,colnames(matrix.atac)]
-# write number of UMIs to file - total before gene filtering as this is more of a QC metric
-num_umi = sum(matrix.rna_count)
-write(num_umi, file = umi_count_path)
+
+# save number of UMIs (pre-filtering) and cells
+n_umi = sum(matrix.rna_count)
+write(n_umi, file = umi_count_path)
+
+n_cells = ncol(matrix.rna_count)
+write(n_cells, file = cell_count_path)
 
 # Normalize scRNA matrix 
 matrix.rna = NormalizeData(matrix.rna_count)

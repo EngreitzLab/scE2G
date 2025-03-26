@@ -24,6 +24,11 @@ if "IGV_dir" in config:
 	IGV_DIR = config["IGV_dir"]
 else:
 	IGV_DIR = config["results_dir"]
+
+
+if "preprocessed_fragments" not in config:
+	config["preprocessed_fragments"] = False
+
 RESULTS_DIR = config["results_dir"] 
 SCRIPTS_DIR = os.path.join(os.getcwd(), "workflow", "scripts")
 CELL_CLUSTER_DF = pd.read_table(config["cell_clusters"]).set_index("cluster", drop=False)
