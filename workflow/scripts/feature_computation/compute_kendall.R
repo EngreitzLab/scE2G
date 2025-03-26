@@ -186,9 +186,13 @@ if (file_ext(rna_matrix_path) %in% c("h5ad", "h5")) {
 }
 
 matrix.rna_count = matrix.rna_count[,colnames(matrix.atac)]
-# write number of UMIs to file - total before gene filtering as this is more of a QC metric
-num_umi = sum(matrix.rna_count)
-write(num_umi, file = umi_count_path)
+
+# save number of UMIs (pre-filtering) and cells
+n_umi = sum(matrix.rna_count)
+write(n_umi, file = umi_count_path)
+
+n_cells = ncol(matrix.rna_count)
+write(n_cells, file = cell_count_path)
 
 # Normalize scRNA matrix 
 matrix.rna = NormalizeData(matrix.rna_count)
