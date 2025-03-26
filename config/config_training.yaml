@@ -2,11 +2,14 @@
 ### INPUT
 cell_clusters: "config/config_cell_clusters.tsv"
 model_config: "config/config_models.tsv"
-gene_annotations: "resources/gencode.v43.chr_patch_hapl_scaff.annotation.gtf.gz"
-
 
 ### OUTPUT
 results_dir: "results/example_results/"
+
+### OPTIONS
+# only set this to True if you are sure that your fragment files (1) are sorted  with sort -k1,1 2n,n and (2) only contain fragments on chromosomes in the chromosome sizes reference file 
+fragments_preprocessed: False 
+run_feature_analysis: False
 
 ### REFERENCE FILES
 gene_annotations: "resources/genome_annotations/gencode.v43.chr_patch_hapl_scaff.annotation.gtf.gz" # compatible with RNA matrix
@@ -16,7 +19,5 @@ crispr_dataset: "resources/EPCrisprBenchmark_ensemble_data_GRCh38.intGENCODEv43.
 
 ### PARAMS
 encode_re2g_dir: "ENCODE_rE2G"
-run_feature_analysis: False
 reference_features: ["numTSSEnhGene", "distance", "activity_base", "TargetGenePromoterActivityQuantile", "numNearbyEnhancers", "sumNearbyEnhancers", "is_ubiquitous_uniform", "P2PromoterClass", "numCandidateEnhGene", "hic_contact_pl_scaled_adj", "ABC.Score", "ABC.Numerator", "ABC.Denominator", "normalized_dhs_prom", "normalized_dhs_enh", "normalized_atac_prom", "normalized_atac_enh", "Kendall", "ARC.E2G.Score"] 
-TPM_threshold: 1 # filter predictions to TPM>1 if RNA data is provided
 final_score_col: "E2G.Score.qnorm"
