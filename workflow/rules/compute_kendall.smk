@@ -29,7 +29,8 @@ rule compute_kendall:
 				"{cluster}", 
 				"Kendall", 
 				"Pairs.Kendall.tsv.gz"),
-		umi_count = temp(os.path.join(RESULTS_DIR, "{cluster}", "umi_count.txt")) 
+		umi_count = temp(os.path.join(RESULTS_DIR, "{cluster}", "umi_count.txt")),
+		cell_count = temp(os.path.join(RESULTS_DIR, "{cluster}", "cell_count.txt")) 
 	resources: 
 		mem_mb=partial(determine_mem_mb, min_gb=63),
 		runtime=lambda wildcards, attempt: attempt*12*60
