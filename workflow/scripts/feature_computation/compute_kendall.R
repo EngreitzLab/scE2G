@@ -160,6 +160,7 @@ gene_gtf_path = snakemake@params$gene_gtf
 abc_genes_path = snakemake@params$abc_genes
 kendall_predictions_path = snakemake@output$kendall_predictions
 umi_count_path = snakemake@output$umi_count
+cell_count_path = snakemake@output$cell_count
 
 # Load candidate E-G pairs
 pairs.E2G = readGeneric(kendall_pairs_path,
