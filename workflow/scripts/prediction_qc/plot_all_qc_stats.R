@@ -81,6 +81,19 @@ plot_dataset_stats <- function(stats, label_key, out_file) {
 
 }
 
+plot_fragment_distribution <- function(stats, label_key, out_file) {
+
+	p <- ggplot(stats, aes(x = factor(1), y = fragments_total)) +
+			geom_violin(trim = TRUE, scale = "count", linewidth = 0, alpha = 0.8, fill = "#c5cad7") + 
+			geom_jitter(width = 0.2, height = 0, shape = 16, size = 2, alpha = 1, color = "#435369") +  
+			labs(x = "", y = label_key["fragments_total"]) +
+			theme_classic() + theme(axis.text = element_text(size = 7), axis.title = element_text(size = 8), axis.ticks = element_line(color = "#000000"),
+				axis.text.x = element_blank(), legend.position = "none")
+
+	ggsave(out_file, p, height = 4, width = 4)
+
+}
+
 plot_scatter_set <- function(stats, x_vars, x_thresh, y_vars, colors, label_key, out_file) {
   	plot_list <- list()
   
@@ -121,12 +134,12 @@ plot_violin_metrics <- function(stats, label_key, colors, out_file) {
 		axis_label <- label_key[metric_col]
 
 		p <- ggplot(stats, aes(y = model_name, x = !!sym(metric_col), fill = model_name)) +
-		geom_violin(trim = TRUE, scale = "count", linewidth = 0, alpha = 0.7, ) + 
-		geom_jitter(aes(color = model_name), height = 0.2, width = 0, shape = 16, size = 2, alpha = 1) +  
-		scale_fill_manual(values = colors) + scale_color_manual(values = colors) + 
-		labs(x = axis_label, y = "") +
-		theme_classic() + theme(axis.text = element_text(size = 7), axis.title = element_text(size = 8), axis.ticks = element_line(color = "#000000"),
-			axis.text.y=element_blank(), legend.position = "none")
+			geom_violin(trim = TRUE, scale = "area", linewidth = 0, alpha = 0.7) + 
+			geom_jitter(aes(color = model_name), height = 0.2, width = 0, shape = 16, size = 2, alpha = 1) +  
+			scale_fill_manual(values = colors) + scale_color_manual(values = colors) + 
+			labs(x = axis_label, y = "") +
+			theme_classic() + theme(axis.text = element_text(size = 7), axis.title = element_text(size = 8), axis.ticks = element_line(color = "#000000"),
+				axis.text.y=element_blank(), legend.position = "none")
 		
 		plots[[i]] <- p  # Add plot to the list
 	}
@@ -174,19 +187,23 @@ eg_vars <- c("mean_genes_per_enh", "mean_enh_per_gene")
 gene_vars <- c("n_genes_with_enh", "n_genes_active_promoter")
 dist_vars <- c("mean_dist_to_tss", "mean_enh_width")
 
-if (sum(stats$umi_count) > 0) { # plot metrics by UMI count
-	x_vars = c("fragments_total", "cell_count", "umi_count")
+x_vars <- c("fragments_total")
+stats_ds <- dplyr::select(stats, cluster, fragments_total, cell_count, umi_count) %>% distinct()
+
+if (sum(stats$umi_count) > 0) { # plot metrics by UMI count, save dataset metrics with per-cell counts
+	x_vars = c(x_vars, "umi_count", "cell_count")
 	gene_vars <- c(gene_vars, "n_genes_not_expressed")
-	
+
+	stats_ds <- stats_ds %>% 
+		mutate(frag_per_cell = fragments_total / cell_count,
+			umi_per_cell = umi_count / cell_count)
+	plot_dataset_stats(stats = stats_ds, label_key = label_key, out_file = ds_stats_out)
 } else {
-	x_vars = c("fragments_total", "cell_count")
+	# just plot distribution of fragments per cluster
+	plot_fragment_distribution(stats = stats_ds, label_key, ds_stats_out)
 }
 
-# plot stats about datasets
-stats_ds <- dplyr::select(stats, cluster, fragments_total, cell_count, umi_count) %>% distinct() %>%
-	mutate(frag_per_cell = fragments_total / cell_count,
-		umi_per_cell = umi_count / cell_count)
-plot_dataset_stats(stats = stats_ds, label_key = label_key, out_file = ds_stats_out)
+
 
 # plot scatter plots of each metric versus sequencing depth stats
 x_thresh = c(2e6, 100, 1e6)
@@ -198,12 +215,4 @@ plot_scatter_set(stats = stats, x_vars = x_vars, x_thresh = x_thresh, y_vars = d
 # violin plots of each metric (each model a diff color) 
 violin_label_key <- label_key[6:length(label_key)]
 plot_violin_metrics(stats = stats, label_key = violin_label_key, colors = cp, out_file = all_distributions_out)
-
-
-
-
-
-
-
-
 
