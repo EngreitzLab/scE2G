@@ -87,11 +87,11 @@ rule element_and_gene_summaries:
 	script:
 		"../scripts/prediction_qc/generate_element_gene_lists.R"
 
-def get_num_UMI_file(wildcards):
+def get_count_file(wildcards, metric):
 	with checkpoints.features_required.get(sample=wildcards.cluster).output.to_generate.open() as f:
 		val = f.read().strip()
 		if val == "Kendall" or val == "ARC":
-			return os.path.join(RESULTS_DIR, wildcards.cluster, "umi_count.txt")
+			return os.path.join(RESULTS_DIR, wildcards.cluster, f"{metric}.txt")
 		else:
 			return RESULTS_DIR
 
@@ -101,7 +101,8 @@ rule get_stats_per_model_per_cluster:
 		pred_thresholded = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "encode_e2g_predictions_threshold{threshold}.tsv.gz"),
 		fragment_count = os.path.join(RESULTS_DIR, "{cluster}", "fragment_count.txt"),
 		cell_count = os.path.join(RESULTS_DIR, "{cluster}", "cell_count.txt"),
-		umi_count = get_num_UMI_file
+		cell_count = lambda wildcards: get_count_file(wildcards, "cell_count"),
+		umi_count = lambda wildcards: get_count_file(wildcards, "umi_count")
 	params:
 		score_column = "E2G.Score.qnorm"
 	conda:
