@@ -40,9 +40,7 @@ rule frag_to_tagAlign:
 		tabix -p bed {output.tagAlign_sort_file}
 		"""
 
-## get fragment & cell count
-
-## get fragment & cell count
+## get fragment cell count
 if config["preprocessed_fragments"]:
 	rule get_fragment_count:
 		input:
@@ -63,7 +61,6 @@ else:
 			chrSizes = config["chr_sizes"]
 		output:
 			fragment_count = temp(os.path.join(RESULTS_DIR, "{cluster}", "fragment_count.txt")),
-			cell_count = temp(os.path.join(RESULTS_DIR, "{cluster}", "cell_count.txt")),
 			fragments_filtered = temp(os.path.join(RESULTS_DIR, "{cluster}", "fragments_filtered.tsv.gz"))
 		threads: 8
 		resources:
@@ -82,7 +79,6 @@ else:
 			# get fragment & cell count
 			awk 'NR==FNR {{keep[$1]; next}} $1 in keep' {params.chrSizes} <(zcat {input.frag_file})  | gzip > {output.fragments_filtered}
 			zcat {output.fragments_filtered} | wc -l > {output.fragment_count}
-			zcat {output.fragments_filtered} | cut -f4 | sort -u | wc -l > {output.cell_count}
 			"""
 
 ## create bigwig from fragment file
