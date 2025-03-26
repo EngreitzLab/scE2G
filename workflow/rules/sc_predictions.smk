@@ -100,7 +100,6 @@ rule get_stats_per_model_per_cluster:
 		pred_full = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "encode_e2g_predictions.tsv.gz"),
 		pred_thresholded = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "encode_e2g_predictions_threshold{threshold}.tsv.gz"),
 		fragment_count = os.path.join(RESULTS_DIR, "{cluster}", "fragment_count.txt"),
-		cell_count = os.path.join(RESULTS_DIR, "{cluster}", "cell_count.txt"),
 		cell_count = lambda wildcards: get_count_file(wildcards, "cell_count"),
 		umi_count = lambda wildcards: get_count_file(wildcards, "umi_count")
 	params:
