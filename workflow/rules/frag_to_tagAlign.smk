@@ -25,7 +25,7 @@ rule frag_to_tagAlign:
 		runtime=720*2,
 		temp_dir = 
 			os.path.join(
-				RESULTS_DIR, "{cluster}", "tagAlign", "tmp"
+				RESULTS_DIR, "tmp"
 		)
 	shell:
 		"""
@@ -93,7 +93,8 @@ rule frag_to_bigWig:
 		bedGraph_file = temp(os.path.join(IGV_DIR, "{cluster}", "ATAC.bg"))
 	resources:
 		mem_mb=determine_mem_mb,
-		runtime_hr=24
+		runtime_hr=24,
+		temp_dir = os.path.join(RESULTS_DIR, "tmp")
 	threads: 16
 	conda: 
 		"../envs/sc_e2g.yml"
@@ -102,7 +103,7 @@ rule frag_to_bigWig:
 			LC_ALL=C
 			zcat {input.frag_file} | \
 				bedtools genomecov -bg -i stdin -g {params.chrSizes} | \
-				sort -k1,1 -k2,2n --parallel={threads} > {output.bedGraph_file}
+				sort -k1,1 -k2,2n --parallel={threads} -S $BUFFER_SIZE -T {resoures.temp_dir} > {output.bedGraph_file}
 			bedGraphToBigWig {output.bedGraph_file} {params.chrSizes} {output.bigWig_file}
 		"""
 
@@ -117,18 +118,20 @@ rule frag_to_norm_bigWig:
 		bedGraph_file = temp(os.path.join(IGV_DIR, "{cluster}", "ATAC_norm.bg"))
 	resources:
 		mem_mb=determine_mem_mb,
-		runtime_hr=24
+		runtime_hr=24,
+		temp_dir=os.path.join(RESULTS_DIR, "tmp")
 	threads: 16
 	conda: 
 		"../envs/sc_e2g.yml"
 	shell:
 		"""
 			LC_ALL=C
+			export BUFFER_SIZE=$(awk -v mem_mb={resources.mem_mb} -v threads={threads} 'BEGIN {{ result = mem_mb/threads/2; print int(result) }}')
 			frag_count=$(<{input.fragment_count})
 			scale_factor=$(awk "BEGIN {{print 1000000 / $frag_count}}")
 
 			zcat {input.frag_file} | \
 				bedtools genomecov -bg -i stdin -g {params.chrSizes} -scale $scale_factor| \
-				sort -k1,1 -k2,2n --parallel={threads} > {output.bedGraph_file}
+				sort -k1,1 -k2,2n --parallel={threads} -S $BUFFER_SIZE -T {resoures.temp_dir} > {output.bedGraph_file}
 			bedGraphToBigWig {output.bedGraph_file} {params.chrSizes} {output.bigWig_file}
 		"""

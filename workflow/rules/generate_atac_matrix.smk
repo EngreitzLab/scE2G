@@ -10,7 +10,7 @@ rule get_cell_barcodes:
 		frag_file = get_processed_fragment_file
 	resources:
 		mem_mb = determine_mem_mb,
-		temp_dir = os.path.join(RESULTS_DIR, "{cluster}", "Kendall", "tmp")
+		temp_dir = os.path.join(RESULTS_DIR, "tmp")
 	threads: 8
 	output:
 		cell_barcodes = os.path.join(RESULTS_DIR, "{cluster}", "Kendall", "cell_barcodes.txt")
