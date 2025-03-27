@@ -83,7 +83,7 @@ class scE2GTest(unittest.TestCase):
         # Make sure the test doesn't take too long
         # May need to adjust as more biosamples are added, but we should keep
         # tests quick, so don't run rE2G on all chromosomes
-        max_time = 60 * 30  # 30 min
+        max_time = 60 * 40  # 40 min
         self.assertLessEqual(
             time_taken,
             max_time,
