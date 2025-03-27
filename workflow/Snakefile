@@ -29,6 +29,9 @@ else:
 if "preprocessed_fragments" not in config:
 	config["preprocessed_fragments"] = False
 
+if "RNA_matrix_filtered" not in config:
+	config["RNA_matrix_filtered"] = True
+
 RESULTS_DIR = config["results_dir"] 
 SCRIPTS_DIR = os.path.join(os.getcwd(), "workflow", "scripts")
 CELL_CLUSTER_DF = pd.read_table(config["cell_clusters"]).set_index("cluster", drop=False)

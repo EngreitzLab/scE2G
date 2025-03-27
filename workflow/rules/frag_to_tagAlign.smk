@@ -25,15 +25,17 @@ rule frag_to_tagAlign:
 		runtime=720*2,
 		temp_dir = 
 			os.path.join(
-				RESULTS_DIR,
-				"tmp"
+				RESULTS_DIR, "{cluster}", "tagAlign", "tmp"
 		)
 	shell:
 		"""
 		# Make, sort and compress tagAlign file from fragment file
-		LC_ALL=C zcat {input.frag_file} | \
-		awk -v OFS='\t' '{{mid=int(($2+$3)/2); print $1,$2,mid,"N",1000,"+"; print $1,mid+1,$3,"N",1000,"-"}}' | \
-		sort -k 1,1V -k 2,2n -k3,3n --parallel {threads} -T {resources.temp_dir} | \
+		export BUFFER_SIZE=$(awk -v mem_mb={resources.mem_mb} -v threads={threads} 'BEGIN {{ result = mem_mb/threads/2; print int(result) }}')
+
+		LC_ALL=C
+		zcat {input.frag_file} | \
+			awk -v OFS='\t' '{{mid=int(($2+$3)/2); print $1,$2,mid,"N",1000,"+"; print $1,mid+1,$3,"N",1000,"-"}}' | \
+			sort -k 1,1V -k 2,2n -k3,3n --parallel {threads} -T {resources.temp_dir} -S $BUFFER_SIZE | \
 		bgzip -c > {output.tagAlign_sort_file}  
 
 		# Index the tagAlign file
@@ -52,7 +54,6 @@ if config["preprocessed_fragments"]:
 			"""
 				zcat {input.frag_file} | wc -l > {output.fragment_count}
 			"""
-
 else:
 	rule process_fragment_file:
 		input:

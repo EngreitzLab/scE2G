@@ -79,7 +79,7 @@ kendall_one_gene = function(x, y.matrix){
 
 
 # Compute Kendall correlation between a mutliple genes and multiple enhancers
-kendall_mutliple_genes = function(bed.E2G,
+kendall_multiple_genes = function(bed.E2G,
                                   data.RNA,
                                   data.ATAC,
                                   colname.gene_name = "gene_name",
@@ -210,7 +210,7 @@ matrix.rna_filt <- gene_filtered_out[[1]]
 df.exp_filt <-  gene_filtered_out[[2]]
 
 # Compute Kendall correlation
-pairs.E2G = kendall_mutliple_genes(pairs.E2G,
+pairs.E2G = kendall_multiple_genes(pairs.E2G,
                                    matrix.rna_filt,
                                    matrix.atac,
                                    colname.gene_name = "TargetGene",

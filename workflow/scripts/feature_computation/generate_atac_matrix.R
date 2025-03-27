@@ -14,6 +14,7 @@ suppressPackageStartupMessages({
 kendall_pairs_path = snakemake@input[["kendall_pairs_path"]]
 atac_frag_path = snakemake@input[["atac_frag_path"]]
 rna_matrix_path = snakemake@input[["rna_matrix_path"]]
+cell_bc_path = snakemake@input[["cell_barcodes_path"]]
 atac_matrix_path = snakemake@output[["atac_matrix_path"]]
 
 # Read the enhancer-gene pairs and extract unique peaks
@@ -23,24 +24,32 @@ pairs.e2g = readGeneric(kendall_pairs_path,
 bed.peaks = pairs.e2g[!duplicated(mcols(pairs.e2g)[,"PeakName"])]
 mcols(bed.peaks) = NULL
 
-# Read the rna matrix to extract cell name
-if (file_ext(rna_matrix_path) == "h5ad") {
-  rna_matrix <- t(read_h5ad(rna_matrix_path)$X)
-} else if (file_ext(rna_matrix_path) == "gz") {
-  rna_matrix = read.csv(rna_matrix_path,
-                        row.names = 1,
-                        check.names = F)
-} else if (file.info(rna_matrix_path)$isdir) { # assume sparse matrix format
-	rna_matrix = Read10X(rna_matrix_path, gene.column=1)
+# Get list of cell barcodes 
+if (file_test("-f", cell_bc_path)) {
+  cells.use <- readLines(cell_bc_path)
 } else {
-	message("Please provide a supported RNA matrix format.")
+
+  # Read the rna matrix to extract cell name
+  if (file_ext(rna_matrix_path) == "h5ad") {
+    rna_matrix <- t(read_h5ad(rna_matrix_path)$X)
+  } else if (file_ext(rna_matrix_path) == "gz") {
+    rna_matrix = read.csv(rna_matrix_path,
+                          row.names = 1,
+                          check.names = F)
+  } else if (file.info(rna_matrix_path)$isdir) { # assume sparse matrix format
+    rna_matrix = Read10X(rna_matrix_path, gene.column=1)
+  } else {
+    message("Please provide a supported RNA matrix format.")
+  }
+
+  cells.use = colnames(rna_matrix)
+  rm(rna_matrix)
 }
+
+names(cells.use) <- cells.use
 
 # Create a list to store Signac Fragment object
 list.fragments = list()
-cells.use = colnames(rna_matrix)
-names(cells.use) = colnames(rna_matrix)
-rm(rna_matrix)
 list.fragments[[1]] =
   CreateFragmentObject(path = atac_frag_path,
                        cells = cells.use)

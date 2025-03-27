@@ -9,8 +9,10 @@ IGV_dir: "results/example_results/"
 ### OPTIONS
 benchmark_performance: False # only set to True if all clusters are K562
 make_IGV_tracks: False # create ATAC bw and prediction bedpe files?
-# only set this to True if you are sure that your fragment files (1) are sorted  with sort -k1,1 2n,n and (2) only contain fragments on chromosomes in the chromosome sizes reference file 
-fragments_preprocessed: False 
+# only set this to True if you are sure that your fragment files (1) are sorted  with sort -k1,1 2n,n and (2) only contain fragments on chromosomes in the chromosome sizes reference file (default if not specified: False)
+fragments_preprocessed: False
+# set this to True if the RNA matrix contains the exact set of cells as the ATAC fragment file, and False if it contains more cells (default if not specified: True)
+RNA_matrix_filtered: False
 
 ### REFERENCE FILES
 gene_annotations: "resources/genome_annotations/gencode.v43.chr_patch_hapl_scaff.annotation.gtf.gz" # compatible with RNA matrix
