@@ -45,8 +45,8 @@ Required input data includes (refer to the example data in the `resources/exampl
 	- Ensure there are not duplicated gene names
 	- Accepted formats for RNA matrix:
 		1. .csv.gz format
-		2. .h5ad or .h5 format
-		3. Directory with sparse matrix files from 10X (matrix.mtx, genes.tsv or features.tsv, and barcodes.tsv). Note that files are read with the argument `gene.column = 1`. 
+		2. .h5ad or .h5 format (you may need to modify the default conda environment with the `anndata` version used to create the file)
+		3. Directory with sparse matrix files from 10x (matrix.mtx, genes.tsv or features.tsv, and barcodes.tsv). Note that files are read with the argument `gene.column = 1`. 
 	- By default, gene names in the RNA matrix are mapped to our gene reference file via Ensembl ID using gene annotations from the GENCODE v43 release (included in `resources/gencode.v43.chr_patch_hapl_scaff.annotation.gtf.gz`). You can modify the annotations to another GENCODE version in in the `gene_annotation` field of `config/config.yaml`. For example, CellRanger uses the GENCODE v32 gene annotations by default; this annotation file can be downloaded [here](https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_32/gencode.v32.annotation.gtf.gz).
 
 To configure the pipeline:
