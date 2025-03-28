@@ -14,6 +14,7 @@ suppressPackageStartupMessages({
 kendall_pairs_path = snakemake@input[["kendall_pairs_path"]]
 atac_frag_path = snakemake@input[["atac_frag_path"]]
 rna_matrix_path = snakemake@input[["rna_matrix_path"]]
+cell_bc_path = snakemake@input[["cell_barcodes_path"]]
 atac_matrix_path = snakemake@output[["atac_matrix_path"]]
 
 # Read the enhancer-gene pairs and extract unique peaks
@@ -25,22 +26,37 @@ mcols(bed.peaks) = NULL
 
 # Read the rna matrix to extract cell name
 if (file_ext(rna_matrix_path) == "h5ad") {
-  rna_matrix <- t(read_h5ad(rna_matrix_path)$X)
+rna_matrix <- t(read_h5ad(rna_matrix_path)$X)
 } else if (file_ext(rna_matrix_path) == "gz") {
-  rna_matrix = read.csv(rna_matrix_path,
-                        row.names = 1,
-                        check.names = F)
+rna_matrix = read.csv(rna_matrix_path,
+						row.names = 1,
+						check.names = F)
 } else if (file.info(rna_matrix_path)$isdir) { # assume sparse matrix format
-	rna_matrix = Read10X(rna_matrix_path, gene.column=1)
+rna_matrix = Read10X(rna_matrix_path, gene.column=1)
 } else {
-	message("Please provide a supported RNA matrix format.")
+message("Please provide a supported RNA matrix format.")
 }
+
+rna.cells = colnames(rna_matrix)
+message("Number of cells in RNA matrix: ", length(rna.cells))
+message("Example cell: ", rna.cells[1])
+
+# if we need to subset based on atac cells, intersect with fragment file cells 
+if (file_test("-f", cell_bc_path)) {
+  atac.cells <- readLines(cell_bc_path)
+  message("Number of cells from fragment file: ", length(atac.cells))
+  message("Example cell: ", atac.cells[1])
+
+  cells.use <- intersect(rna.cells, atac.cells)
+  message("Number of cells to use: ", length(cells.use))
+} else {
+	cells.use <- rna.cells
+}
+
+names(cells.use) <- cells.use
 
 # Create a list to store Signac Fragment object
 list.fragments = list()
-cells.use = colnames(rna_matrix)
-names(cells.use) = colnames(rna_matrix)
-rm(rna_matrix)
 list.fragments[[1]] =
   CreateFragmentObject(path = atac_frag_path,
                        cells = cells.use)
@@ -51,6 +67,8 @@ atac.matrix <- FeatureMatrix(
   features = bed.peaks,
   cells = cells.use
 )
+message("Example cell in ATAC matrix: ", colnames(atac.matrix)[1])
+
 
 # Save ATAC-seq matrix
 saveRDS(atac.matrix,

@@ -100,7 +100,7 @@ plot_scatter_set <- function(stats, x_vars, x_thresh, y_vars, colors, label_key,
  	 for (y in y_vars) {
     	for (i in seq_along(x_vars)) {
 			x <- x_vars[i]
-			x_line <- x_thresh[i]
+			x_line <- x_thresh[x]
 			x_max <- max(x_line + 1, max(stats[[x]]) + 1)
 			
 			p <- ggplot(stats, aes(x = !!sym(x), y = !!sym(y))) +
@@ -206,7 +206,7 @@ if (sum(stats$umi_count) > 0) { # plot metrics by UMI count, save dataset metric
 
 
 # plot scatter plots of each metric versus sequencing depth stats
-x_thresh = c(2e6, 100, 1e6)
+x_thresh = c(fragments_total = 2e6, cell_count = 100, umi_count = 1e6)
 plot_scatter_set(stats = stats, x_vars = x_vars, x_thresh = x_thresh, y_vars = enh_vars, colors = cp, label_key = label_key, out_file = enh_stats_out)
 plot_scatter_set(stats = stats, x_vars = x_vars, x_thresh = x_thresh, y_vars = eg_vars, colors = cp, label_key = label_key, out_file = eg_stats_out)
 plot_scatter_set(stats = stats, x_vars = x_vars, x_thresh = x_thresh, y_vars = gene_vars, colors = cp, label_key = label_key, out_file = gene_stats_out)
