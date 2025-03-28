@@ -24,26 +24,33 @@ pairs.e2g = readGeneric(kendall_pairs_path,
 bed.peaks = pairs.e2g[!duplicated(mcols(pairs.e2g)[,"PeakName"])]
 mcols(bed.peaks) = NULL
 
-# Get list of cell barcodes 
-if (file_test("-f", cell_bc_path)) {
-  cells.use <- readLines(cell_bc_path)
+# Read the rna matrix to extract cell name
+if (file_ext(rna_matrix_path) == "h5ad") {
+rna_matrix <- t(read_h5ad(rna_matrix_path)$X)
+} else if (file_ext(rna_matrix_path) == "gz") {
+rna_matrix = read.csv(rna_matrix_path,
+						row.names = 1,
+						check.names = F)
+} else if (file.info(rna_matrix_path)$isdir) { # assume sparse matrix format
+rna_matrix = Read10X(rna_matrix_path, gene.column=1)
 } else {
+message("Please provide a supported RNA matrix format.")
+}
 
-  # Read the rna matrix to extract cell name
-  if (file_ext(rna_matrix_path) == "h5ad") {
-    rna_matrix <- t(read_h5ad(rna_matrix_path)$X)
-  } else if (file_ext(rna_matrix_path) == "gz") {
-    rna_matrix = read.csv(rna_matrix_path,
-                          row.names = 1,
-                          check.names = F)
-  } else if (file.info(rna_matrix_path)$isdir) { # assume sparse matrix format
-    rna_matrix = Read10X(rna_matrix_path, gene.column=1)
-  } else {
-    message("Please provide a supported RNA matrix format.")
-  }
+rna.cells = colnames(rna_matrix)
+message("Number of cells in RNA matrix: ", length(rna.cells))
+message("Example cell: ", rna.cells[1])
 
-  cells.use = colnames(rna_matrix)
-  rm(rna_matrix)
+# if we need to subset based on atac cells, intersect with fragment file cells 
+if (file_test("-f", cell_bc_path)) {
+  atac.cells <- readLines(cell_bc_path)
+  message("Number of cells from fragment file: ", length(atac.cells))
+  message("Example cell: ", atac.cells[1])
+
+  cells.use <- intersect(rna.cells, atac.cells)
+  message("Number of cells to use: ", length(cells.use))
+} else {
+	cells.use <- rna.cells
 }
 
 names(cells.use) <- cells.use
@@ -60,6 +67,8 @@ atac.matrix <- FeatureMatrix(
   features = bed.peaks,
   cells = cells.use
 )
+message("Example cell in ATAC matrix: ", colnames(atac.matrix)[1])
+
 
 # Save ATAC-seq matrix
 saveRDS(atac.matrix,
