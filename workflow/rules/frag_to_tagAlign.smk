@@ -101,6 +101,7 @@ rule frag_to_bigWig:
 	shell:
 		"""
 			LC_ALL=C
+			export BUFFER_SIZE=$(awk -v mem_mb={resources.mem_mb} -v threads={threads} 'BEGIN {{ result = mem_mb/threads/2; print int(result) }}')q
 			zcat {input.frag_file} | \
 				bedtools genomecov -bg -i stdin -g {params.chrSizes} | \
 				sort -k1,1 -k2,2n --parallel={threads} -S $BUFFER_SIZE -T {resources.temp_dir} > {output.bedGraph_file}
