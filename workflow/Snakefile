@@ -88,7 +88,10 @@ model_perf = os.path.join(RESULTS_DIR, "crispr_benchmarking_performance_summary.
 
 ## Choose relevant output files
 output_files.extend(encode_e2g_predictions)
-output_files.append(plots)
+output_files.extend(prediction_stats)
+output_files.append(gene_lists)
+output_files.append(element_lists)
+output_files.append(all_qc)
 
 if config["make_IGV_tracks"]:
 	output_files.extend(bedpe_files)

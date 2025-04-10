@@ -1,0 +1,42 @@
+diff --git a/workflow/Snakefile b/workflow/Snakefile
+index 89fe977..ac7418c 100755
+--- a/workflow/Snakefile
++++ b/workflow/Snakefile
+@@ -88,7 +88,10 @@ model_perf = os.path.join(RESULTS_DIR, "crispr_benchmarking_performance_summary.
+ 
+ ## Choose relevant output files
+ output_files.extend(encode_e2g_predictions)
+-output_files.append(plots)
++output_files.extend(prediction_stats)
++output_files.append(gene_lists)
++output_files.append(element_lists)
++output_files.append(all_qc)
+ 
+ if config["make_IGV_tracks"]:
+ 	output_files.extend(bedpe_files)
+diff --git a/workflow/rules/frag_to_tagAlign.smk b/workflow/rules/frag_to_tagAlign.smk
+index a183c37..e9b78dd 100644
+--- a/workflow/rules/frag_to_tagAlign.smk
++++ b/workflow/rules/frag_to_tagAlign.smk
+@@ -16,7 +16,7 @@ rule frag_to_tagAlign:
+ 	threads: 8
+ 	resources:
+ 		mem_mb=determine_mem_mb,
+-		runtime_hr=24
++		runtime_hr=24,
+ 		temp_dir = 
+ 			os.path.join(
+ 				RESULTS_DIR,
+@@ -41,9 +41,9 @@ rule process_fragment_file:
+ 	params:
+ 		chrSizes = config["chr_sizes"]
+ 	output:
+-		fragment_count = temp(os.path.join(RESULTS_DIR, "{cluster}", "fragment_count.txt")),
+-		cell_count = temp(os.path.join(RESULTS_DIR, "{cluster}", "cell_count.txt")),
+-		fragments_filtered = temp(os.path.join(RESULTS_DIR, "{cluster}", "fragments_filtered.tsv.gz"))
++		fragment_count = os.path.join(RESULTS_DIR, "{cluster}", "fragment_count.txt"),
++		cell_count = os.path.join(RESULTS_DIR, "{cluster}", "cell_count.txt"),
++		fragments_filtered = os.path.join(RESULTS_DIR, "{cluster}", "fragments_filtered.tsv.gz")
+ 	threads: 8
+ 	resources:
+ 		mem_mb=determine_mem_mb,
