@@ -22,7 +22,7 @@ rule frag_to_tagAlign:
 	threads: 8
 	resources:
 		mem_mb=determine_mem_mb,
-		runtime=720*2,
+		runtime_hr=24,
 		temp_dir = 
 			os.path.join(
 				RESULTS_DIR, "tmp"
@@ -61,12 +61,12 @@ else:
 		params:
 			chrSizes = config["chr_sizes"]
 		output:
-			fragment_count = temp(os.path.join(RESULTS_DIR, "{cluster}", "fragment_count.txt")),
-			fragments_filtered = temp(os.path.join(RESULTS_DIR, "{cluster}", "fragments_filtered.tsv.gz"))
+			fragment_count = os.path.join(RESULTS_DIR, "{cluster}", "fragment_count.txt"),
+			fragments_filtered = os.path.join(RESULTS_DIR, "{cluster}", "fragments_filtered.tsv.gz")
 		threads: 8
 		resources:
 			mem_mb=determine_mem_mb,
-			runtime=720*2,
+			runtime_hr=24
 			temp_dir = 
 				os.path.join(
 					RESULTS_DIR,
