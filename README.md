@@ -16,10 +16,9 @@ The pipeline consists of the following components:
 6. Apply trained model to make predictions by assigning a score to each E-G pair
 
 ## Set up
-Clone the repo and set it up for submodule usage
+Clone the repo and set it up for submodule usage. Note that you will need to use the `--recurse-submodules` flag when cloning or updating the repo to ensure the submodules are up-to-date. 
 ```
 git clone --recurse-submodules https://github.com/EngreitzLab/scE2G.git
-git config --global submodule.recurse true
 ```
 
 When running for the first time, the conda environments have to be setup. 
