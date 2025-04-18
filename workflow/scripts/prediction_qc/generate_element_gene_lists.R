@@ -12,7 +12,7 @@ suppressPackageStartupMessages({
 abc_gene_list <- fread(snakemake@input$abc_gene_list, sep = "\t")
 abc_element_list <- fread(snakemake@input$abc_element_list, sep = "\t")
 pred <- fread(snakemake@input$prediction_file)
-cell_type <- snakemake@wildcards$cluster
+this_cluster <- snakemake@wildcards$cluster
 tpm_threshold <- snakemake@params$tpm_threshold
 
 genes_out <- snakemake@output$gene_list
@@ -34,7 +34,7 @@ pred_genes <- dplyr::select(pred, TargetGene, TargetGeneEnsembl_ID, any_of(gene_
 	rename(name = TargetGene, Ensembl_ID = TargetGeneEnsembl_ID)
 
 gene_list <- abc_gene_list %>%
-	dplyr::select(-c(is_ue, Expression, cellType, cell_type), -contains("RPKM")) %>%
+	dplyr::select(-c(is_ue, Expression, cellType), -contains("RPKM")) %>%
 	mutate(removed_by_promoter_activity = !(name %in% pred_genes$name)) %>% # refers to promoter activity quantile
 	left_join(pred_genes, by = c("name", "Ensembl_ID"))
 
