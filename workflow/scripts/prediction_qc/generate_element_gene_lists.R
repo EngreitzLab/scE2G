@@ -29,14 +29,13 @@ elements_out <- snakemake@output$element_list
 
 gene_columns <- c("normalizedATAC_prom", "ubiqExpressed")
 RNA_columns <- c("RNA_meanLogNorm", "RNA_pseudobulkTPM", "RNA_percentCellsDetected")
-pred_genes <- dplyr::select(pred, TargetGene, TargetGeneEnsembl_ID,any_of(gene_columns), any_of(RNA_columns)) %>%
+pred_genes <- dplyr::select(pred, TargetGene, TargetGeneEnsembl_ID, any_of(gene_columns), any_of(RNA_columns), CellType) %>%
 	distinct() %>%
 	rename(name = TargetGene, Ensembl_ID = TargetGeneEnsembl_ID)
 
 gene_list <- abc_gene_list %>%
-	dplyr::select(-c(Expression, cellType)) %>%
-	rename(removed_by_promoter_activity = is_ue) %>% # refers to promoter activity quantile
-	mutate(cellType = cell_type) %>%
+	dplyr::select(-c(is_ue, Expression, cellType, cell_type), -contains("RPKM")) %>%
+	mutate(removed_by_promoter_activity = !(name %in% pred_genes$name)) %>% # refers to promoter activity quantile
 	left_join(pred_genes, by = c("name", "Ensembl_ID"))
 
 if ("RNA_pseudobulkTPM" %in% colnames(gene_list)) {
