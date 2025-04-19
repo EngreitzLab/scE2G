@@ -59,7 +59,13 @@ res <- get_stats_from_pred(pred_full, pred_thresholded, score_column)
 res$cluster <- snakemake@wildcards$cluster
 res$model_name <- snakemake@wildcards$model_name
 res$fragments_total <- as.numeric(readLines(snakemake@input$fragment_count))
-res$cell_count <- as.numeric(readLines(snakemake@input$cell_count))
+
+cell_path <- snakemake@input$cell_count
+if (file.info(cell_path)$isdir) {
+	res$cell_count <- 0
+} else {
+	res$cell_count <- as.numeric(readLines(snakemake@input$cell_count))
+}
 
 umi_path <- snakemake@input$umi_count
 if (file.info(umi_path)$isdir) {
@@ -69,3 +75,4 @@ if (file.info(umi_path)$isdir) {
 }
 
 fwrite(res, out_file, sep="\t", quote=FALSE, col.names=TRUE, row.names=FALSE)
+
