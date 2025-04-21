@@ -40,7 +40,7 @@ gene_list <- abc_gene_list %>%
 
 if ("RNA_pseudobulkTPM" %in% colnames(pred)) { # we have RNA data
 	RNA_columns <- c("RNA_meanLogNorm", "RNA_pseudobulkTPM", "RNA_percentCellsDetected")
-	gex <- fread(snakemake@output$gene_expr_file) %>%
+	gex <- fread(snakemake@input$gene_expr_file) %>%
 		select(name = TargetGene, any_of(RNA_columns))
 
 	gene_list <- left_join(gene_list, gex, by = "name") %>% 
