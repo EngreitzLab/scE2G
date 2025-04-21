@@ -161,6 +161,7 @@ abc_genes_path = snakemake@params$abc_genes
 kendall_predictions_path = snakemake@output$kendall_predictions
 umi_count_path = snakemake@output$umi_count
 cell_count_path = snakemake@output$cell_count
+gex_out_path = snakemake@output$all_gex
 
 # Load candidate E-G pairs
 pairs.E2G = readGeneric(kendall_pairs_path,
@@ -208,6 +209,12 @@ df.exp_inf = data.frame(mean_log_normalized_rna = rowMeans(matrix.rna),
 gene_filtered_out = map_gene_names(matrix.rna, df.exp_inf, gene_gtf_path, abc_genes_path)
 matrix.rna_filt <- gene_filtered_out[[1]]
 df.exp_filt <-  gene_filtered_out[[2]]
+
+fwrite(df.exp_filt,
+       file = gex_out_path,
+       row.names = F,
+       quote = F,
+       sep = "\t")
 
 # Compute Kendall correlation
 pairs.E2G = kendall_multiple_genes(pairs.E2G,

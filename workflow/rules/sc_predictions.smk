@@ -69,12 +69,20 @@ rule run_e2g_qnorm:
 			--crispr_benchmarking {params.crispr_benchmarking} \
 			--output_file {output.prediction_file}
 		"""
+def get_gex_file(wildcards):
+	with checkpoints.features_required.get(sample=wildcards.cluster).output.to_generate.open() as f:
+		val = f.read().strip()
+		if val == "Kendall" or val == "ARC":
+			return os.path.join(RESULTS_DIR, wildcards.cluster, "Kendall", "gene_expression_metrics.tsv.gz")
+		else:
+			return RESULTS_DIR
 
 rule element_and_gene_summaries:
 	input:
 		abc_gene_list = os.path.join(RESULTS_DIR, "{cluster}", "Neighborhoods", "GeneList.txt"),
 		abc_element_list = os.path.join(RESULTS_DIR, "{cluster}", "Neighborhoods", "EnhancerList.txt"),
-		prediction_file = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "encode_e2g_predictions.tsv.gz")
+		prediction_file = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "encode_e2g_predictions.tsv.gz"),
+		gene_expr_file = get_gex_file
 	params:
 		tpm_threshold = lambda wildcards: encode_e2g.get_tpm_threshold(wildcards.cluster, wildcards.model_name, BIOSAMPLE_DF)
 	conda:

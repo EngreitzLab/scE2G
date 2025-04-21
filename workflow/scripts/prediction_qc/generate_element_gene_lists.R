@@ -28,8 +28,8 @@ elements_out <- snakemake@output$element_list
 # ATAC.tagAlign.sort.gz.readCount	...	PromoterActivityQuantile
 
 gene_columns <- c("normalizedATAC_prom", "ubiqExpressed")
-RNA_columns <- c("RNA_meanLogNorm", "RNA_pseudobulkTPM", "RNA_percentCellsDetected")
-pred_genes <- dplyr::select(pred, TargetGene, TargetGeneEnsembl_ID, any_of(gene_columns), any_of(RNA_columns), CellType) %>%
+
+pred_genes <- dplyr::select(pred, TargetGene, TargetGeneEnsembl_ID, any_of(gene_columns), CellType) %>%
 	distinct() %>%
 	rename(name = TargetGene, Ensembl_ID = TargetGeneEnsembl_ID)
 
@@ -38,8 +38,13 @@ gene_list <- abc_gene_list %>%
 	mutate(removed_by_promoter_activity = !(name %in% pred_genes$name)) %>% # refers to promoter activity quantile
 	left_join(pred_genes, by = c("name", "Ensembl_ID"))
 
-if ("RNA_pseudobulkTPM" %in% colnames(gene_list)) {
-	gene_list <- mutate(gene_list, removed_by_TPM = (RNA_pseudobulkTPM < tpm_threshold),
+if ("RNA_pseudobulkTPM" %in% colnames(pred)) { # we have RNA data
+	RNA_columns <- c("RNA_meanLogNorm", "RNA_pseudobulkTPM", "RNA_percentCellsDetected")
+	gex <- fread(snakemake@output$gene_expr_file) %>%
+		select(name = TargetGene, any_of(RNA_columns))
+
+	gene_list <- left_join(gene_list, gex, by = "name") %>% 
+		mutate(removed_by_TPM = (RNA_pseudobulkTPM < tpm_threshold),
 		considered_for_predictions = !removed_by_promoter_activity & !removed_by_TPM)
 } else {
 	gene_list <- mutate(gene_list, considered_for_predictions = !removed_by_promoter_activity)
