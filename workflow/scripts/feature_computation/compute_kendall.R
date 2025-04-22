@@ -210,7 +210,7 @@ gene_filtered_out = map_gene_names(matrix.rna, df.exp_inf, gene_gtf_path, abc_ge
 matrix.rna_filt <- gene_filtered_out[[1]]
 df.exp_filt <-  gene_filtered_out[[2]]
 
-fwrite(df.exp_filt,
+fwrite(df.exp_filt %>% rownames_to_column(var = "TargetGene"), 
        file = gex_out_path,
        row.names = F,
        quote = F,
