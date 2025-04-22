@@ -13,6 +13,7 @@ suppressPackageStartupMessages({
   library(anndata)
   library(tools)
   library(dplyr)
+  library(tibble)
 })
 
 ## Define functions --------------------------------------------------------------------------------
