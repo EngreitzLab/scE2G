@@ -18,7 +18,13 @@ The pipeline consists of the following components:
 ## Set up
 Clone the repo and set it up for submodule usage. Note that you will need to use the `--recurse-submodules` flag when cloning or updating the repo to ensure the submodules are up-to-date. 
 ```
+# clone the top-level repo and initialize submodules recursively
 git clone --recurse-submodules https://github.com/EngreitzLab/scE2G.git
+
+# initialize and update nested submodules
+cd scE2G
+git submodule update --init --recursive
+
 ```
 
 When running for the first time, the conda environments have to be setup. 
