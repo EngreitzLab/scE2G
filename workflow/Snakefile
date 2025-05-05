@@ -6,7 +6,6 @@ import os
 import yaml
 
 
-configfile: "config/config.yaml"
 conda: "mamba"
 
 
@@ -106,7 +105,7 @@ output_files.append(all_qc)
 
 if config["make_IGV_tracks"]:
 	output_files.extend(bedpe_files)
-	output_files.extend(atac_bw)
+	#output_files.extend(atac_bw)
 	output_files.extend(atac_bw_norm)
 
 if config["benchmark_performance"]:
