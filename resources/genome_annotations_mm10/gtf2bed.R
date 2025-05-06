@@ -1,12 +1,10 @@
-setwd("/maps/projects/ralab_nnfc-AUDIT/people/lpm537/software/scE2G_pipeline/250420_mm10/scE2G/resources/genome_annotations_mm10")
-
 library(rtracklayer)
 library(dplyr)
 library(GenomeInfoDb)
 library(GenomicRanges)
 
 
-gtf <- import("/maps/projects/ralab_nnfc-AUDIT/people/lpm537/project/Sperm/processed/Masahiro/scmulti/genes.gtf.gz", format = "gtf")
+gtf <- import("genes.gtf.gz", format = "gtf")
 
 # calculate transcript lenths
 gtf.exons <- gtf[gtf$type == "exon"]
