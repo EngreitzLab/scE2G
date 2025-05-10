@@ -134,3 +134,19 @@ rule plot_stats:
 	script:
 		"../scripts/prediction_qc/plot_all_qc_stats.R"
 
+
+rule hover_plots:
+	input:
+		qc_stats = os.path.join(RESULTS_DIR, "qc_plots", "all_qc_stats.tsv")
+	params:
+		reference_clusters = REFERENCE_CLUSTERS,
+		results_dir = RESULTS_DIR,
+		code_dir = WORKFLOW_DIR
+	conda:
+		"../envs/sc_e2g.yml"
+	resources:
+		mem_mb=determine_mem_mb
+	output:
+		plot_html = os.path.join(RESULTS_DIR, "qc_plots", "hover_qc_plots.html")
+	script:
+		os.path.join("{params.code_dir}", "workflow", "scripts", "prediction_qc", "hover_qc_plots.Rmd")

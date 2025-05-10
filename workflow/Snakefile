@@ -35,6 +35,9 @@ if "RNA_matrix_filtered" not in config:
 RESULTS_DIR = config["results_dir"] 
 SCRIPTS_DIR = os.path.join(os.getcwd(), "workflow", "scripts")
 CELL_CLUSTER_DF = pd.read_table(config["cell_clusters"]).set_index("cluster", drop=False)
+REFERENCE_CLUSTERS = config["reference_clusters"]
+WORKFLOW_DIR = os.getcwd()
+print("CURRENT WORKING DIRECTORY: ", WORKFLOW_DIR)
 
 ## Convert cell cluster config to a biosample config for the ABC pipeline
 ## Treat each cell cluster as a distinct biosample
@@ -89,7 +92,8 @@ encode_e2g_predictions = [os.path.join(RESULTS_DIR, biosample, model_name, "enco
 prediction_stats = [os.path.join(RESULTS_DIR, biosample, model_name, f"encode_e2g_predictions_threshold{threshold}_stats.tsv") for biosample,model_name,threshold in biosample_model_threshold]
 gene_lists = [os.path.join(RESULTS_DIR, biosample, model_name, "scE2G_gene_list.tsv.gz") for biosample,model_name in biosample_model]
 element_lists = [os.path.join(RESULTS_DIR, biosample, model_name, "scE2G_element_list.tsv.gz") for biosample,model_name in biosample_model]
-all_qc = os.path.join(RESULTS_DIR, "qc_plots", "all_qc_stats.tsv")
+#all_qc = os.path.join(RESULTS_DIR, "qc_plots", "all_qc_stats.tsv")
+hover_plot_html = os.path.join(RESULTS_DIR, "qc_plots", "hover_qc_plots.html")
 
 bedpe_files = [os.path.join(IGV_DIR, biosample, model_name, f"encode_e2g_predictions_threshold{threshold}.bedpe") for biosample,model_name,threshold in biosample_model_threshold]
 atac_bw = [os.path.join(IGV_DIR, biosample, "ATAC.bw") for biosample in BIOSAMPLE_DF["biosample"]]
@@ -102,7 +106,8 @@ output_files.extend(encode_e2g_predictions)
 output_files.extend(prediction_stats)
 output_files.append(gene_lists)
 output_files.append(element_lists)
-output_files.append(all_qc)
+#output_files.append(all_qc)
+output_files.append(hover_plot_html)
 
 if config["make_IGV_tracks"]:
 	output_files.extend(bedpe_files)

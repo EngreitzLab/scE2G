@@ -1,0 +1,624 @@
+---
+title: "Hover scE2G QC Metrics"
+author: "Kayla Brand"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(plotly)
+library(dplyr)
+library(rmarkdown)
+
+# knitr::opts_chunk$set(
+#   fig.width = 10,
+#   fig.height = 8,
+#   out.width = "100%",
+#   dpi = 300
+# )
+```
+
+## scE2G QC Metric Summary
+
+
+```{r import_data, echo=FALSE, include=FALSE}
+stats <- readr::read_tsv(snakemake@input$qc_stats)
+preprint <- readr::read_tsv(snakemake@params$reference_clusters)
+```
+
+```{r filter_data, echo=FALSE}
+filter_data <- function(dataframe, column, threshold, announce=TRUE, remove=TRUE){
+  # announce feature requires a cluster column
+  if (announce) {
+    removed_identifiers <- dataframe$cluster[dataframe[column] < threshold]
+    stmt = paste("WARNING: The following identifiers have less than", threshold, "in", column, ":\n", removed_identifiers)
+    if (length(removed_identifiers) > 0) {
+      cat(stmt)
+    }
+  }
+  if (remove) {
+    return(dataframe[dataframe[column] >= threshold, ])
+  } else {
+    return(dataframe)
+  }
+}
+## Flag problematic clusters
+stats <- filter_data(stats, "fragments_total", 2e6, announce=TRUE, remove=FALSE)
+## Quietly remove BMMC22_ID2_hi_myeloid_prog
+preprint <- filter_data(preprint, "fragments_total", 2e6, announce=FALSE, remove=TRUE)
+```
+
+```{r helpers, echo=FALSE}
+label_key <- c(fragments_total = "# unique ATAC fragments in cluster", cell_count = "# cells in cluster", umi_count = "# RNA UMIs in cluster",
+               frag_per_cell = "Mean unique ATAC fragments per cell", umi_per_cell = "Mean RNA UMIs per cell",
+               n_enh_gene_links = "# enhancer-gene links", n_enh_elements = "# unique enhancers",
+               mean_genes_per_enh = "Mean # genes per enhancer", mean_enh_per_gene = "Mean # enhancers per gene",
+               n_genes_with_enh = "# genes with 1+ enhancer", n_genes_active_promoter = "# genes with accessible promoter", 
+               n_genes_not_expressed = "# genes below TPM threshold",
+               mean_dist_to_tss = "Mean distance to TSS (bp)", mean_enh_width = "Mean width of enhancer element (bp)")
+
+assign_model_colors <- function(model_names) {
+  # Define specific model colors
+  predefined_colors <- c(
+    "multiome_powerlaw_v2" = "#792374",
+    "scATAC_powerlaw_v2" = "#006479",
+    "multiome_megamap_v2" = "#00488d",
+    "multiome_powerlaw_v3" = "#792374",
+    "scATAC_powerlaw_v3" = "#006479",
+    "multiome_megamap_v3" = "#00488d"
+  )
+  
+  # Define available fallback colors
+  fallback_colors <- c("#429130", "#c5373d", "#e96a00", "#ca9b23")
+  
+  # Create an empty named vector
+  model_colors <- setNames(character(length(model_names)), model_names)
+  
+  # Assign predefined colors if present
+  for (model in names(predefined_colors)) {
+    if (model %in% model_names) {
+      model_colors[model] <- predefined_colors[model]
+    }
+  }
+  
+  # Get models that do not have predefined colors
+  remaining_models <- model_names[model_colors == ""]
+  
+  # Assign fallback colors
+  if (length(remaining_models) > 0) {
+    assigned_fallbacks <- head(fallback_colors, length(remaining_models))
+    model_colors[remaining_models] <- assigned_fallbacks
+  }
+  
+  # Assign random colors if needed
+  uncolored_models <- names(model_colors[model_colors == ""])
+  if (length(uncolored_models) > 0) {
+    random_colors <- colors()[sample(length(colors()), length(uncolored_models))]
+    model_colors[uncolored_models] <- random_colors
+  }
+  
+  return(model_colors)
+}
+describe_grid_configuration <- function(yColumns, thresholds) {
+  return(unlist(
+    lapply(yColumns, function(ycol) {
+      lapply(names(thresholds), function(xcol) {
+        list(
+          x_col = xcol,
+          y_col = ycol,
+          threshold = thresholds[[xcol]]
+        )
+      })
+    }),
+    recursive = FALSE
+  ))
+}
+
+# Minimum thresholds for clusters
+thresholds <- c(fragments_total = 2e6,
+              cell_count = 100,
+              umi_count = 1e6)
+```
+
+```{r scatter, echo=FALSE}
+create_cluster_plot <- function(data, x_col, y_col, threshold = NULL, 
+                                axis_labels = NULL, color_map = NULL,
+                                dot_size = 8, plot_index = 1, total_plots = 1,
+                                width=NULL, height=NULL) {
+  
+  # Default axis labels if not provided
+  if(is.null(axis_labels)) {
+    axis_labels <- c(x_col, y_col)
+  }
+  
+  # Create default color map if not provided
+  if(is.null(color_map)) {
+    model_names <- unique(data$model_name)
+    default_colors <- RColorBrewer::brewer.pal(max(8, length(model_names)), "Set1")
+    color_map <- setNames(default_colors[1:length(model_names)], model_names)
+  }
+  
+  # Calculate x-axis range with buffer to include threshold and all points
+  x_min <- min(c(data[[x_col]], threshold), na.rm = TRUE)
+  x_max <- max(data[[x_col]], na.rm = TRUE)
+  buffer <- 0.1 * (log10(x_max) - log10(x_min))
+  x_range <- c(10^(log10(x_min) - buffer), 10^(log10(x_max) + buffer))
+  
+  # Determine sizing
+  if (is.null(width) & is.null(height)) {
+    autosize <- TRUE
+  } else {
+    autosize <- FALSE
+  }
+  
+  # Create the base plot
+  p <- plot_ly(
+    width=width,
+    height=height
+  ) %>%
+    layout(
+      xaxis = list(
+        title = axis_labels[x_col],
+        type = "log",
+        range = log10(x_range),
+        tickvals = 10^(floor(log10(x_min)):ceiling(log10(x_max))),
+        tickformat = ".0e"
+      ),
+      yaxis = list(
+        title = axis_labels[y_col]
+      ),
+      hovermode = "closest",
+      autosize = autosize
+    )
+  
+  # Add scatter plots for each model
+  for (model in unique(data$model_name)) {
+    model_data <- data %>% filter(model_name == model)
+    
+    # Only show legend for the first plot
+    show_this_legend <- (plot_index == 1)
+    
+    p <- p %>%
+      add_trace(
+        data = model_data,
+        x = ~get(x_col),
+        y = ~get(y_col),
+        type = "scatter",
+        mode = "markers",
+        marker = list(
+          color = color_map[model],
+          size = dot_size,
+          opacity=0.7
+        ),
+        text = ~cluster,
+        hoverinfo = "text+x+y",
+        hovertext = ~paste("Cluster:", cluster, 
+                           "<br>", x_col, ":", round(get(x_col), 4),
+                           "<br>", y_col, ":", round(get(y_col), 4),
+                           "<br>Model:", model_name),
+        name = model,
+        legendgroup = model,  # Group traces with the same name
+        showlegend = show_this_legend  # Only show in first plot
+      )
+  }
+  
+  # Add threshold line if specified
+  if (!is.null(threshold)) {
+    # Only show threshold in legend for first plot
+    show_threshold_legend <- (plot_index == 1)
+    
+    p <- p %>%
+      add_trace(
+        x = c(threshold, threshold),
+        y = c(min(data[[y_col]], na.rm = TRUE), max(data[[y_col]], na.rm = TRUE)),
+        type = "scatter",
+        mode = "lines",
+        line = list(color = "black", dash = "dash", width = 1.5),
+        name = "Threshold",
+        legendgroup = "threshold",
+        hoverinfo = "text",
+        hovertext = paste("Threshold:", threshold),
+        showlegend = show_threshold_legend
+      )
+  }
+  
+  return(p)
+}
+
+# Improved function to create a grid of cluster plots
+create_cluster_plot_grid <- function(data, plots_config, axis_labels, nrows, ncols, 
+                                     color_map = NULL, title = NULL, dot_size = 8,
+                                     width=NULL, height=NULL, fontsize=NULL) {
+  # Create default color map if not provided
+  if(is.null(color_map)) {
+    color_map <- assign_model_colors(unique(data$model_name))
+  }
+  
+  # Check if configuration is valid
+  if(length(plots_config) > nrows * ncols) {
+    warning("More plots specified than grid cells available. Some plots will be omitted.")
+    plots_config <- plots_config[1:(nrows * ncols)]
+  }
+  
+  # Generate all plots
+  plot_list <- list()
+  for(i in 1:length(plots_config)) {
+    config <- plots_config[[i]]
+    
+    # Create individual plot, passing the plot index
+    plt <- create_cluster_plot(
+      data = data,
+      x_col = config$x_col,
+      y_col = config$y_col,
+      threshold = config$threshold,
+      axis_labels = axis_labels,
+      color_map = color_map,
+      dot_size = dot_size,
+      plot_index = i,
+      total_plots = length(plots_config),
+      width=width,
+      height=height
+    ) %>% layout(
+      margin = list(l = 80, r = 50, t = 250, b = 50),
+      font = list(size = fontsize)
+    )
+    
+    plot_list[[i]] <- plt
+  }
+  
+  # Create subplot grid with reduced spacing
+  subplot_args <- c(
+    plot_list,
+    list(
+      nrows = nrows,
+      margin = 0.05,
+      titleX = TRUE,
+      titleY = TRUE,
+      shareX = FALSE,
+      shareY = FALSE
+    )
+  )
+  
+  grid_plot <- do.call(subplot, subplot_args)
+  
+  # Configure the layout
+  layout_args <- list(
+    showlegend = TRUE,
+    legend = list(
+      orientation = "h",
+      xanchor = "center",
+      x = 0.5,
+      y = -0.3/ncols
+    )
+  )
+  
+  # Only add title and padding if title is provided
+  if (!is.null(title)) {
+    layout_args$title <- list(
+      text = title,
+      font = list(size = 16),
+      y = 0.98
+    )
+    layout_args$margin <- list(t = 50, b = 80)
+  } else {
+    layout_args$margin <- list(t = 10, b = 80)
+  }
+  
+  grid_plot <- do.call(layout, c(list(p = grid_plot), layout_args))
+  
+  return(grid_plot)
+}
+```
+
+```{r violin, echo=FALSE}
+create_violin_plot <- function(data, x_col, 
+                               group_col = "model_name", 
+                               axis_labels = NULL,
+                               color_map = NULL,
+                               #show_legend=TRUE,
+                               point_size = 8,
+                               box_width = 0.2,
+                               jitter_proportion = 1,
+                               violin_width = 0.6,
+                               orientation = "h",
+                               plot_index = 1) {
+  
+  # Default axis labels if not provided
+  if(is.null(axis_labels)) {
+    axis_labels <- setNames(colnames(data), colnames(data))
+  }
+  
+  # Get the grouping variable and create a default color map if not provided
+  group_values <- unique(data[[group_col]])
+  if(is.null(color_map)) {
+    default_colors <- RColorBrewer::brewer.pal(max(8, length(group_values)), "Set1")
+    color_map <- setNames(default_colors[1:length(group_values)], group_values)
+  }
+  
+  # Initialize the plot
+  p <- plot_ly()
+  
+  # Only show legend for the first plot
+  show_this_legend <- (plot_index == 1)
+  
+  # Loop through each group to create violin, boxplot, and points
+  for(group_val in group_values) {
+    group_data <- data %>% filter(!!sym(group_col) == group_val)
+    
+    # Add violin plot
+    p <- p %>% add_trace(
+      data = group_data,
+      x = ~get(x_col),
+      y = group_val,
+      # violins
+      type = "violin",
+      orientation = orientation,
+      width = violin_width,
+      fillcolor = adjustcolor(color_map[group_val], alpha.f = 0.5),
+      # points
+      points = "all",
+      jitter = jitter_proportion,
+      pointpos = 0,
+      marker = list(color = adjustcolor(color_map[group_val], alpha.f = 0.8)),
+      # hide the automatic box plot
+      box = list(visible = FALSE),
+      line = list(color = color_map[group_val], width = 1),
+      # metadata
+      name = group_val,
+      legendgroup = group_val,
+      showlegend = show_this_legend,
+      text = if ("cluster" %in% colnames(data)) paste("Cluster:", group_data$cluster) else NULL,
+      hoverinfo = "text"
+    )
+    
+    # Add boxplot inside the violin
+    p <- p %>% add_boxplot(
+      data = group_data,
+      x = ~get(x_col),
+      y = group_val,
+      orientation = orientation,
+      boxpoints = FALSE,
+      boxmean = TRUE,
+      width = box_width,
+      #color = color_map[group_val],
+      line = list(color = "black", width = 1),
+      fillcolor = "transparent",
+      name = group_val,
+      legendgroup = group_val,
+      showlegend = FALSE,
+      hoverinfo = "none"
+    )
+
+    # # Add points
+    # p <- p %>% add_trace(
+    #   y = group_val, #rep(group_val, nrow(group_data)),
+    #   x = group_data[[x_col]],
+    #   type = "scatter",
+    #   mode = "markers",
+    #   marker = list(color = color_map[group_val], size = point_size, opacity = 0.6),
+    #   name = group_val,
+    #   legendgroup = group_val,
+    #   showlegend = FALSE,
+    #   text = if ("cluster" %in% colnames(data)) paste("Cluster:", group_data$cluster) else NULL,
+    #   hovertext = if ("cluster" %in% colnames(data)) 
+    #     paste("Value:", round(group_data[[x_col]], 2), "<br>Cluster:", group_data$cluster) 
+    #   else paste("Value:", round(group_data[[x_col]], 2)),
+    #   hoverinfo = "text"
+    # )
+  }
+  
+  # Set the layout
+  p <- p %>% layout(
+    xaxis = list(
+      title = axis_labels[x_col],
+      zeroline = FALSE
+    ),
+    yaxis = list(
+      title = "",
+      zeroline = FALSE,
+      showticklabels = TRUE,
+      categoryarray = rev(group_values),
+      categoryorder = "array"
+    ),
+    margin = list(l = 100, r = 50, b = 100, t = 50),
+    hovermode = "closest",
+    showlegend = show_this_legend,
+    legend = list(
+      orientation = "h",
+      xanchor = "center",
+      x = 0.5,
+      y = -0.15
+    )
+  )
+  
+  return(p)
+}
+create_violin_plot_grid <- function(data, xVars, group_col, axis_labels, 
+                                    nrows=3, 
+                                    color_map = NULL, title = NULL,
+                                    jitter_proportion = 0.6, violin_width = 1, 
+                                    box_width = 0.2, point_size = 6) {
+  # Create default color map if not provided
+  if(is.null(color_map)) {
+    color_map <- assign_model_colors(unique(data[[group_col]]))
+  }
+  
+  # Generate all plots
+  plot_list <- list()
+  for(i in 1:length(xVars)) {
+    x_col <- xVars[[i]]
+    
+    # Create individual plot, passing the plot index
+    plt <- create_violin_plot(
+      data = stats,
+      x_col = x_col,
+      group_col = group_col,
+      axis_labels = axis_labels,
+      color_map = assign_model_colors(unique(data[[group_col]])),
+      #show_legend = FALSE,
+      point_size = point_size,
+      jitter_proportion = jitter_proportion,
+      box_width = box_width,
+      violin_width = violin_width,
+      plot_index = i,
+      #total_plots = length(xVars)
+    )
+    
+    plot_list[[i]] <- plt
+  }
+  
+  # Create subplot grid with reduced spacing
+  subplot_args <- c(
+    plot_list,
+    list(
+      nrows = nrows,
+      margin = 0.05,
+      titleX = TRUE,
+      titleY = FALSE,
+      shareX = FALSE,
+      shareY = TRUE
+    )
+  )
+  
+  grid_plot <- do.call(subplot, subplot_args)
+  
+  # Configure the layout
+  layout_args <- list(
+    showlegend = TRUE,
+    legend = list(
+      orientation = "h",
+      xanchor = "center",
+      x = 0.5,
+      y = -0.1
+    )
+  )
+  
+  # Only add title and padding if title is provided
+  if (!is.null(title)) {
+    layout_args$title <- list(
+      text = title,
+      font = list(size = 16),
+      y = 0.98
+    )
+    layout_args$margin <- list(t = 50, b = 80)
+  } else {
+    layout_args$margin <- list(t = 10, b = 80)
+  }
+  
+  grid_plot <- do.call(layout, c(list(p = grid_plot), layout_args))
+  
+  return(grid_plot)
+}
+```
+
+```{r dataset_metrics, echo=FALSE, fig.width=6, fig.height=3, out.width="100%"}
+# dataset configuration
+dataset_config <- describe_grid_configuration(
+  c("fragments_total", "umi_count"), 
+  c(cell_count = 100))
+
+# Create the gene metrics grid plot
+dataset_metrics <- create_cluster_plot_grid(
+  data = stats %>% filter(model_name == "multiome_powerlaw_v3"), 
+  plots_config = dataset_config,
+  label_key,
+  nrows = 1,
+  ncols = 2,
+  title = "Dataset Metrics",
+  fontsize=12
+)
+
+dataset_metrics
+```
+
+```{r enhancer_metrics, echo=FALSE, fig.width=8, fig.height=6, out.width="100%"}
+# Set-up
+enh_vars <- c("n_enh_gene_links", "n_enh_elements")
+enhancer_config <- describe_grid_configuration(
+  enh_vars, 
+  thresholds)
+
+# Create the grid plot
+enhancer_metrics <- create_cluster_plot_grid(
+  data = stats,  
+  plots_config = enhancer_config,
+  label_key,
+  nrows = 2,
+  ncols = 3,
+  fontsize = 10
+)
+
+# Display the plot
+enhancer_metrics
+```
+
+```{r gene_metrics, echo=FALSE, fig.width=8, fig.height=9, out.width="100%"}
+# Gene configuration
+gene_vars <- c("n_genes_with_enh", "n_genes_active_promoter", "n_genes_not_expressed")
+gene_config <- describe_grid_configuration(
+  gene_vars, 
+  thresholds)
+
+# Create the gene metrics grid plot
+gene_metrics <- create_cluster_plot_grid(
+  data = stats,  
+  plots_config = gene_config,
+  label_key,
+  nrows = 3,
+  ncols = 3,
+  title = "Gene Metrics",
+  # width = 800,
+  # height = 700,
+  fontsize=12
+)
+
+gene_metrics
+```
+
+```{r E2G_metrics, echo=FALSE, fig.width=8, fig.height=6, out.width="100%"}
+eg_vars <- c("mean_genes_per_enh", "mean_enh_per_gene")
+eg_config <- describe_grid_configuration(
+  eg_vars, 
+  thresholds)
+
+# Create the E2G metrics plot
+eg_metrics <- create_cluster_plot_grid(
+  data = stats,
+  plots_config = eg_config,
+  label_key,
+  nrows = 2,
+  ncols = 3,
+  title = "E2G Metrics",
+  fontsize=10
+)
+
+eg_metrics
+```
+
+```{r distance_metrics, echo=FALSE, fig.width=8, fig.height=6, out.width="100%"}
+dist_vars <- c("mean_dist_to_tss", "mean_enh_width")
+dist_config <- describe_grid_configuration(
+  dist_vars, 
+  thresholds)
+
+# Create the E2G metrics plot
+distance_metrics <- create_cluster_plot_grid(
+  data = stats,
+  plots_config = dist_config,
+  label_key,
+  nrows = 2,
+  ncols = 3,
+  title = "Enhancer distance and size metrics",
+  fontsize=10
+)
+
+distance_metrics
+```
+
+```{r violin_plot, echo=FALSE, fig.width=8, fig.height=9, out.width="100%"}
+violin_vars <- c('n_enh_gene_links', 'n_enh_elements', 'mean_genes_per_enh',
+                 'mean_enh_per_gene', 'n_genes_with_enh', 'n_genes_active_promoter',
+                 'n_genes_not_expressed', 'mean_dist_to_tss', 'mean_enh_width')
+create_violin_plot_grid(stats, violin_vars, "model_name",
+                        label_key, title="QC distributions")
+```

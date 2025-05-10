@@ -22,6 +22,9 @@ dependencies:
   - r-base
   - r-r.utils
   - r-data.table
+  - r-dplyr
+  - r-plotly
+  - r-rmarkdown
   - r-tidyverse
   - r-ggpubr
   - r-ggcorrplot
