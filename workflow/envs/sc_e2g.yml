@@ -25,6 +25,7 @@ dependencies:
   - r-dplyr
   - r-plotly
   - r-rmarkdown
+  - r-DT
   - r-tidyverse
   - r-ggpubr
   - r-ggcorrplot

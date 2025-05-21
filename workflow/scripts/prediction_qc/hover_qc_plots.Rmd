@@ -1,25 +1,20 @@
 ---
-title: "Hover scE2G QC Metrics"
+title: "scE2G prediction properties and QC"
 author: "Kayla Brand"
 date: "`r Sys.Date()`"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: true
 ---
 
 ```{r setup, include=FALSE}
 library(plotly)
 library(dplyr)
-library(rmarkdown)
-
-# knitr::opts_chunk$set(
-#   fig.width = 10,
-#   fig.height = 8,
-#   out.width = "100%",
-#   dpi = 300
-# )
+library(DT)
 ```
-
-## scE2G QC Metric Summary
-
 
 ```{r import_data, echo=FALSE, include=FALSE}
 stats <- readr::read_tsv(snakemake@input$qc_stats)
@@ -27,13 +22,21 @@ preprint <- readr::read_tsv(snakemake@params$reference_clusters)
 ```
 
 ```{r filter_data, echo=FALSE}
+# Filter out weird clusters
 filter_data <- function(dataframe, column, threshold, announce=TRUE, remove=TRUE){
   # announce feature requires a cluster column
   if (announce) {
-    removed_identifiers <- dataframe$cluster[dataframe[column] < threshold]
-    stmt = paste("WARNING: The following identifiers have less than", threshold, "in", column, ":\n", removed_identifiers)
+    removed_identifiers <- unique(dataframe$cluster[dataframe[column] < threshold])
+    
+    # Only print if there is a problem
     if (length(removed_identifiers) > 0) {
-      cat(stmt)
+      # Format the identifiers as a comma-separated string
+      id_string <- paste(removed_identifiers, collapse=", ")
+      
+      # Create and print the warning once
+      stmt <- sprintf("WARNING: The following identifier(s) have less than %s in %s:\n%s", 
+                      format(threshold, scientific=TRUE), column, id_string)
+      cat(stmt, "\n")
     }
   }
   if (remove) {
@@ -42,20 +45,28 @@ filter_data <- function(dataframe, column, threshold, announce=TRUE, remove=TRUE
     return(dataframe)
   }
 }
-## Flag problematic clusters
-stats <- filter_data(stats, "fragments_total", 2e6, announce=TRUE, remove=FALSE)
 ## Quietly remove BMMC22_ID2_hi_myeloid_prog
 preprint <- filter_data(preprint, "fragments_total", 2e6, announce=FALSE, remove=TRUE)
 ```
 
 ```{r helpers, echo=FALSE}
-label_key <- c(fragments_total = "# unique ATAC fragments in cluster", cell_count = "# cells in cluster", umi_count = "# RNA UMIs in cluster",
-               frag_per_cell = "Mean unique ATAC fragments per cell", umi_per_cell = "Mean RNA UMIs per cell",
-               n_enh_gene_links = "# enhancer-gene links", n_enh_elements = "# unique enhancers",
-               mean_genes_per_enh = "Mean # genes per enhancer", mean_enh_per_gene = "Mean # enhancers per gene",
-               n_genes_with_enh = "# genes with 1+ enhancer", n_genes_active_promoter = "# genes with accessible promoter", 
+label_key <- c(fragments_total = "# unique ATAC fragments in cluster", 
+               cell_count = "# cells in cluster", 
+               umi_count = "# RNA UMIs in cluster",
+               frag_per_cell = "Mean unique ATAC fragments per cell", 
+               umi_per_cell = "Mean RNA UMIs per cell",
+               n_enh_gene_links = "# enhancer-gene links", 
+               n_enh_elements = "# unique enhancers",
+               mean_genes_per_enh = "Mean # genes per enhancer", 
+               mean_enh_per_gene = "Mean # enhancers per gene",
+               n_genes_with_enh = "# genes with 1+ enhancer", 
+               n_genes_active_promoter = "# genes with accessible promoter", 
                n_genes_not_expressed = "# genes below TPM threshold",
-               mean_dist_to_tss = "Mean distance to TSS (bp)", mean_enh_width = "Mean width of enhancer element (bp)")
+               mean_dist_to_tss = "Mean distance to TSS (bp)", 
+               mean_enh_width = "Mean width of enhancer element (bp)",
+               mean_fragments = "Mean ATAC fragments per cell",
+               mean_umis = "Mean RNA UMIs per cell"
+               )
 
 assign_model_colors <- function(model_names) {
   # Define specific model colors
@@ -99,6 +110,43 @@ assign_model_colors <- function(model_names) {
   
   return(model_colors)
 }
+assign_source_colors <- function(data_sources, model) {
+  if (model == "multiome_powerlaw_v3") {
+    predefined_colors <- c(
+      "Input Data" = "#792374",
+      "Sheth, Qiu" = "#192374"
+    )
+  } else if (model == "scATAC_powerlaw_v3") {
+    predefined_colors <- c(
+      "Input Data" = "#006479",
+      "Sheth, Qiu" = "#192374"
+    )
+  } else {
+    predefined_colors <- c()
+  }
+  # Create an empty named vector
+  source_colors <- setNames(character(length(data_sources)), data_sources)
+  
+  # Assign predefined colors if present
+  for (source in names(predefined_colors)) {
+    if (source %in% data_sources) {
+      source_colors[source] <- predefined_colors[source]
+    }
+  }
+  
+  # Get models that do not have predefined colors
+  remaining <- data_sources[source_colors == ""]
+  
+  # Assign random colors if needed
+  uncolored <- names(source_colors[source_colors == ""])
+  if (length(uncolored) > 0) {
+    random_colors <- colors()[sample(length(colors()), length(uncolored))]
+    source_colors[uncolored] <- random_colors
+  }
+  
+  return(source_colors)
+}
+
 describe_grid_configuration <- function(yColumns, thresholds) {
   return(unlist(
     lapply(yColumns, function(ycol) {
@@ -120,11 +168,60 @@ thresholds <- c(fragments_total = 2e6,
               umi_count = 1e6)
 ```
 
+```{r tab_setup, echo=FALSE}
+# scE2G Multiome data table with reference
+multiome <- bind_rows(
+  stats %>% 
+    filter(model_name == "multiome_powerlaw_v3") %>% 
+    mutate(source = "Input Data"),
+  preprint %>% 
+    filter(model_name == "multiome_powerlaw_v3") %>% 
+    mutate(source = "Sheth, Qiu")
+)
+
+# scATAC with reference data
+scATAC <- bind_rows(
+  stats %>% 
+    filter(model_name == "scATAC_powerlaw_v3") %>% 
+    mutate(source = "Input Data"),
+  preprint %>% 
+    filter(model_name == "scATAC_powerlaw_v3") %>% 
+    mutate(source = "Sheth, Qiu")
+)
+
+multiome_color_map = c(
+    "Input Data" = "#792374",
+    "Sheth, Qiu" = "grey"
+  )
+
+scATAC_color_map = c(
+    "Input Data" = "#006479",
+    "Sheth, Qiu" = "grey"
+  )
+```
+
 ```{r scatter, echo=FALSE}
-create_cluster_plot <- function(data, x_col, y_col, threshold = NULL, 
+create_cluster_plot <- function(data, x_col, y_col, 
+                                category_col = "model_name",
+                                plot_order = c(),
+                                threshold = NULL, 
                                 axis_labels = NULL, color_map = NULL,
-                                dot_size = 8, plot_index = 1, total_plots = 1,
+                                dot_size = 8, plot_index = 1,
                                 width=NULL, height=NULL) {
+  
+  # Create determine plotting order if not specified
+  if (length(plot_order) == 0) {
+    plot_order <- unique(data[[category_col]])
+  }
+  
+  # Compare models or data sources
+  if ("model" %in% category_col) {
+    model_source <- "Model:"
+  } else if ("source" %in% category_col) {
+    model_source <- "Source:"
+  } else {
+    model_source <- "From:"
+  }
   
   # Default axis labels if not provided
   if(is.null(axis_labels)) {
@@ -132,10 +229,16 @@ create_cluster_plot <- function(data, x_col, y_col, threshold = NULL,
   }
   
   # Create default color map if not provided
+  categories <- unique(data[[category_col]])
   if(is.null(color_map)) {
-    model_names <- unique(data$model_name)
-    default_colors <- RColorBrewer::brewer.pal(max(8, length(model_names)), "Set1")
-    color_map <- setNames(default_colors[1:length(model_names)], model_names)
+    if (category_col == "model_name") {
+      color_map <- assign_model_colors(categories)
+    } else if ((category_col == "source") & ("model_name" %in% colnames(data))) {
+      color_map <- assign_source_colors(categories, unique(data$model_name))
+    } else {
+      default_colors <- RColorBrewer::brewer.pal(max(8, length(categories)), "Set1")
+      color_map <- setNames(default_colors[1:length(categories)], categories)
+    }
   }
   
   # Calculate x-axis range with buffer to include threshold and all points
@@ -162,7 +265,7 @@ create_cluster_plot <- function(data, x_col, y_col, threshold = NULL,
         type = "log",
         range = log10(x_range),
         tickvals = 10^(floor(log10(x_min)):ceiling(log10(x_max))),
-        tickformat = ".0e"
+        tickformat = "~s"
       ),
       yaxis = list(
         title = axis_labels[y_col]
@@ -172,8 +275,8 @@ create_cluster_plot <- function(data, x_col, y_col, threshold = NULL,
     )
   
   # Add scatter plots for each model
-  for (model in unique(data$model_name)) {
-    model_data <- data %>% filter(model_name == model)
+  for (origin in plot_order) {
+    model_data <- data %>% filter(!!sym(category_col) == origin)
     
     # Only show legend for the first plot
     show_this_legend <- (plot_index == 1)
@@ -186,18 +289,18 @@ create_cluster_plot <- function(data, x_col, y_col, threshold = NULL,
         type = "scatter",
         mode = "markers",
         marker = list(
-          color = color_map[model],
+          color = color_map[origin],
           size = dot_size,
-          opacity=0.7
+          opacity = if (origin == "Sheth, Qiu") 0.3 else 0.7
         ),
         text = ~cluster,
         hoverinfo = "text+x+y",
         hovertext = ~paste("Cluster:", cluster, 
                            "<br>", x_col, ":", round(get(x_col), 4),
                            "<br>", y_col, ":", round(get(y_col), 4),
-                           "<br>Model:", model_name),
-        name = model,
-        legendgroup = model,  # Group traces with the same name
+                           "<br>", model_source, get(category_col)),
+        name = origin,
+        legendgroup = origin,  # Group traces with the same name
         showlegend = show_this_legend  # Only show in first plot
       )
   }
@@ -214,7 +317,7 @@ create_cluster_plot <- function(data, x_col, y_col, threshold = NULL,
         type = "scatter",
         mode = "lines",
         line = list(color = "black", dash = "dash", width = 1.5),
-        name = "Threshold",
+        name = paste("Threshold:", threshold),
         legendgroup = "threshold",
         hoverinfo = "text",
         hovertext = paste("Threshold:", threshold),
@@ -225,13 +328,22 @@ create_cluster_plot <- function(data, x_col, y_col, threshold = NULL,
   return(p)
 }
 
-# Improved function to create a grid of cluster plots
 create_cluster_plot_grid <- function(data, plots_config, axis_labels, nrows, ncols, 
+                                     category_col = "model_name",
+                                     plot_order = c(),
                                      color_map = NULL, title = NULL, dot_size = 8,
                                      width=NULL, height=NULL, fontsize=NULL) {
   # Create default color map if not provided
+  categories <- unique(data[[category_col]])
   if(is.null(color_map)) {
-    color_map <- assign_model_colors(unique(data$model_name))
+    if (category_col == "model_name") {
+      color_map <- assign_model_colors(categories)
+    } else if ((category_col == "source") & ("model_name" %in% colnames(data))) {
+      color_map <- assign_source_colors(categories, unique(data$model_name))
+    } else {
+      default_colors <- RColorBrewer::brewer.pal(max(8, length(categories)), "Set1")
+      color_map <- setNames(default_colors[1:length(categories)], categories)
+    }
   }
   
   # Check if configuration is valid
@@ -250,12 +362,13 @@ create_cluster_plot_grid <- function(data, plots_config, axis_labels, nrows, nco
       data = data,
       x_col = config$x_col,
       y_col = config$y_col,
+      category_col=category_col,
       threshold = config$threshold,
       axis_labels = axis_labels,
+      plot_order = plot_order,
       color_map = color_map,
       dot_size = dot_size,
       plot_index = i,
-      total_plots = length(plots_config),
       width=width,
       height=height
     ) %>% layout(
@@ -288,7 +401,478 @@ create_cluster_plot_grid <- function(data, plots_config, axis_labels, nrows, nco
       orientation = "h",
       xanchor = "center",
       x = 0.5,
-      y = -0.3/ncols
+      y = -0.1*ncols
+    )
+  )
+  
+  # Only add title and padding if title is provided
+  if (!is.null(title)) {
+    layout_args$title <- list(
+      text = title,
+      font = list(size = 16),
+      y = 0.98
+    )
+    layout_args$margin <- list(t = 50, b = 80)
+  } else {
+    layout_args$margin <- list(t = 10, b = 80)
+  }
+  
+  grid_plot <- do.call(layout, c(list(p = grid_plot), layout_args))
+  
+  return(grid_plot)
+}
+```
+
+```{r scatter_advanced, echo=FALSE}
+threshold_descriptor <- function(column) {
+  if (grepl("fragments", column)) {
+    return("ATAC")
+  } else if (grepl("umi", column)) {
+    return("RNA")
+  } else if (grepl("cell", column)) {
+    return("cells")
+  } else {
+    return("")
+  }
+}
+
+create_cluster_plot2 <- function(data, x_col, y_col, 
+                                category_col = "model_name",
+                                plot_order = c(),
+                                x_threshold = NULL, y_threshold = NULL,
+                                axis_labels = NULL, color_map = NULL,
+                                dot_size = 8, plot_index = 1,
+                                y_log_scale = FALSE,
+                                width=NULL, height=NULL) {
+  
+  # Create determine plotting order if not specified
+  if (length(plot_order) == 0) {
+    plot_order <- unique(data[[category_col]])
+  }
+  
+  # Compare models or data sources
+  if ("model" %in% category_col) {
+    model_source <- "Model:"
+  } else if ("source" %in% category_col) {
+    model_source <- "Source:"
+  } else {
+    model_source <- "From:"
+  }
+  
+  # Default axis labels if not provided
+  if (is.null(axis_labels)) {
+    axis_labels <- c(x_col, y_col)
+  }
+  
+  # Create default color map if not provided
+  categories <- unique(data[[category_col]])
+  if(is.null(color_map)) {
+    if (category_col == "model_name") {
+      color_map <- assign_model_colors(categories)
+    } else if ((category_col == "source") & ("model_name" %in% colnames(data))) {
+      color_map <- assign_source_colors(categories, unique(data$model_name))
+    } else {
+      default_colors <- RColorBrewer::brewer.pal(max(8, length(categories)), "Set1")
+      color_map <- setNames(default_colors[1:length(categories)], categories)
+    }
+  }
+  
+  # Calculate x-axis range with buffer to include threshold and all points
+  x_min <- min(c(data[[x_col]], x_threshold), na.rm = TRUE)
+  x_max <- max(data[[x_col]], na.rm = TRUE)
+  buffer <- 0.1 * (log10(x_max) - log10(x_min))
+  x_range <- c(10^(log10(x_min) - buffer), 10^(log10(x_max) + buffer))
+  xtick_min <- floor(log10(x_min))
+  xtick_max <- ceiling(log10(x_max))
+  # Ensure range in the x-axis
+  if (xtick_min == xtick_max) {
+    xtick_max <- xtick_max + 1
+  }
+  
+  # For use if y has a threshold, calculate y-axis range to include this threshold
+  y_min <- min(c(data[[y_col]], y_threshold), na.rm = TRUE)
+  y_max <- max(data[[y_col]], na.rm = TRUE)
+  if (y_log_scale) {
+    buffer <- 0.1 * (log10(y_max) - log10(y_min))
+    y_range <- log10(c(10^(log10(y_min) - buffer), 10^(log10(y_max) + buffer)))
+  } else {
+    buffer <- 0.1 * ((y_max) - (y_min))
+    y_range <- (c(((y_min) - buffer), ((y_max) + buffer)))
+  }
+  
+  # Determine sizing
+  if (is.null(width) & is.null(height)) {
+    autosize <- TRUE
+  } else {
+    autosize <- FALSE
+  }
+  
+  # Create the base plot
+  p <- plot_ly(
+    width=width,
+    height=height
+  ) %>%
+    layout(
+      xaxis = list(
+        title = axis_labels[x_col],
+        type = "log",
+        range = if (is.null(x_threshold)) NULL else log10(x_range),
+        tickvals = 10^(xtick_min:xtick_max),
+        tickformat = "~s",
+        showgrid = TRUE,
+        dtick = 1,
+        tick0 = if (!is.null(x_threshold)) floor(log10(x_threshold)) else floor(log10(x_min))
+      ),
+      yaxis = list(
+        title = axis_labels[y_col],
+        type = if (y_log_scale) "log" else "-",
+        range = if (!is.null(y_threshold)) y_range else NULL,
+        tickvals = if (y_log_scale) 10^(floor(log10(y_min)):ceiling(log10(y_max))) else NULL,
+        tickformat = if (y_log_scale) "~s" else NULL
+      ),
+      hovermode = "closest",
+      autosize = autosize
+    )
+  
+  # Add scatter plots for each model
+  for (origin in plot_order) {
+    model_data <- data %>% filter(!!sym(category_col) == origin)
+    
+    # Only show legend for the first plot
+    show_this_legend <- (plot_index == 1)
+    
+    p <- p %>%
+      add_trace(
+        data = model_data,
+        x = ~get(x_col),
+        y = ~get(y_col),
+        type = "scatter",
+        mode = "markers",
+        marker = list(
+          color = color_map[origin],
+          size = dot_size,
+          opacity = if (origin == "Sheth, Qiu") 0.3 else 0.7
+        ),
+        text = ~cluster,
+        hoverinfo = "text+x+y",
+        hovertext = ~paste("Cluster:", cluster, 
+                           "<br>", x_col, ":", round(get(x_col), 4),
+                           "<br>", y_col, ":", round(get(y_col), 4),
+                           "<br>", model_source, get(category_col)),
+        name = origin,
+        legendgroup = origin,  # Group traces with the same name
+        showlegend = show_this_legend  # Only show in first plot
+      )
+  }
+  
+  # Add threshold line to x-axis if specified
+  if (!is.null(x_threshold)) {
+    # Only show threshold in legend for first plot
+    show_threshold_legend <- (plot_index == 1)
+    
+    p <- p %>%
+      add_trace(
+        x = c(x_threshold, x_threshold),
+        y = c(min(data[[y_col]], na.rm = TRUE), max(data[[y_col]], na.rm = TRUE)),
+        type = "scatter",
+        mode = "lines",
+        line = list(color = "black", dash = "dash", width = 1.5),
+        name = paste0("Threshold (", threshold_descriptor(x_col), "): ", x_threshold),
+        legendgroup = "x_threshold",
+        hoverinfo = "text",
+        hovertext = paste("Threshold:", x_threshold),
+        showlegend = show_threshold_legend
+      )
+  }
+  # Add threshold line to y-axis if specified
+  if (!is.null(y_threshold)) {
+    # Only show threshold in legend for first plot
+    show_threshold_legend <- (plot_index == 1)
+    
+    p <- p %>%
+      add_trace(
+        x = c(min(data[[x_col]], na.rm = TRUE), max(data[[x_col]], na.rm = TRUE)),
+        y = c(y_threshold, y_threshold),
+        type = "scatter",
+        mode = "lines",
+        line = list(color = "black", dash = "dash", width = 1.5),
+        name = paste0("Threshold (", threshold_descriptor(y_col), "): ", y_threshold),
+        legendgroup = "y_threshold",
+        hoverinfo = "text",
+        hovertext = paste("Threshold:", y_threshold),
+        showlegend = show_threshold_legend
+      )
+  }
+  
+  return(p)
+}
+
+create_metrics_plot_grid <- function(data, plots_config, axis_labels, nrows, ncols, 
+                                     category_col = "model_name",
+                                     plot_order = c(), 
+                                     thresholds = c(),
+                                     y_log_scale=FALSE,
+                                     color_map = NULL, title = NULL, dot_size = 8,
+                                     width=NULL, height=NULL, fontsize=NULL) {
+  # Create default color map if not provided
+  categories <- unique(data[[category_col]])
+  if(is.null(color_map)) {
+    if (category_col == "model_name") {
+      color_map <- assign_model_colors(categories)
+    } else if ((category_col == "source") & ("model_name" %in% colnames(data))) {
+      color_map <- assign_source_colors(categories, unique(data$model_name))
+    } else {
+      default_colors <- RColorBrewer::brewer.pal(max(8, length(categories)), "Set1")
+      color_map <- setNames(default_colors[1:length(categories)], categories)
+    }
+  }
+  
+  # Check if configuration is valid
+  if(length(plots_config) > nrows * ncols) {
+    warning("More plots specified than grid cells available. Some plots will be omitted.")
+    plots_config <- plots_config[1:(nrows * ncols)]
+  }
+  
+  # Generate all plots
+  plot_list <- list()
+  for(i in 1:length(plots_config)) {
+    config <- plots_config[[i]]
+    
+    # Create individual plot, passing the plot index
+    plt <- create_cluster_plot2(
+      data = data,
+      x_col = config$x_col,
+      y_col = config$y_col,
+      category_col=category_col,
+      x_threshold = if (config$x_col %in% names(thresholds)) thresholds[[config$x_col]] else NULL,
+      y_threshold = if (config$y_col %in% names(thresholds)) thresholds[[config$y_col]] else NULL,
+      y_log_scale = y_log_scale,
+      axis_labels = axis_labels,
+      plot_order = plot_order,
+      color_map = color_map,
+      dot_size = dot_size,
+      plot_index = i,
+      width=width,
+      height=height
+    ) %>% layout(
+      margin = list(l = 80, r = 50, t = 250, b = 50),
+      font = list(size = fontsize)
+    )
+    
+    plot_list[[i]] <- plt
+  }
+  
+  # Create subplot grid with reduced spacing
+  subplot_args <- c(
+    plot_list,
+    list(
+      nrows = nrows,
+      margin = 0.05,
+      titleX = TRUE,
+      titleY = TRUE,
+      shareX = FALSE,
+      shareY = FALSE
+    )
+  )
+  
+  grid_plot <- do.call(subplot, subplot_args)
+  
+  # Configure the layout
+  layout_args <- list(
+    showlegend = TRUE,
+    legend = list(
+      orientation = "h",
+      xanchor = "center",
+      x = 0.5,
+      y = -0.1*ncols
+    )
+  )
+  
+  # Only add title and padding if title is provided
+  if (!is.null(title)) {
+    layout_args$title <- list(
+      text = title,
+      font = list(size = 16),
+      y = 0.98
+    )
+    layout_args$margin <- list(t = 50, b = 80)
+  } else {
+    layout_args$margin <- list(t = 10, b = 80)
+  }
+  
+  grid_plot <- do.call(layout, c(list(p = grid_plot), layout_args))
+  
+  return(grid_plot)
+}
+```
+
+```{r delete_dataset_display, echo=FALSE}
+create_basic_plot <- function(data, x_col, y_col, model="multiome_powerlaw_v3", threshold = NULL, 
+                                axis_labels = NULL, point_color = 'darkslategrey',
+                                dot_size = 8, plot_index = 1,
+                                width=NULL, height=NULL) {
+  
+  # Default axis labels if not provided
+  if(is.null(axis_labels)) {
+    axis_labels <- c(x_col, y_col)
+  }
+
+  # Calculate x-axis range with buffer to include threshold and all points
+  x_min <- min(c(data[[x_col]], threshold), na.rm = TRUE)
+  x_max <- max(data[[x_col]], na.rm = TRUE)
+  buffer <- 0.1 * (log10(x_max) - log10(x_min))
+  x_range <- c(10^(log10(x_min) - buffer), 10^(log10(x_max) + buffer))
+  
+  # Determine sizing
+  if (is.null(width) & is.null(height)) {
+    autosize <- TRUE
+  } else {
+    autosize <- FALSE
+  }
+  
+  # Limit data to rows with the correct model
+  if (any(grepl(model, data$model_name))) {
+    model_data <- data %>% filter(model_name == model)
+  } else {
+    model_data <- data
+  }
+  if (length(model_data) == 0) {
+    stop(paste(model, "is not a valid model_name in the data"))
+  }
+  
+  # Create the base plot
+  p <- plot_ly(
+    width=width,
+    height=height
+  ) %>%
+    layout(
+      xaxis = list(
+        title = axis_labels[x_col],
+        type = "log",
+        range = log10(x_range),
+        tickvals = 10^(floor(log10(x_min)):ceiling(log10(x_max))),
+        tickformat = ".0e"
+      ),
+      yaxis = list(
+        title = axis_labels[y_col]
+      ),
+      hovermode = "closest",
+      autosize = autosize
+    )
+  
+  # Create scatter plot
+  p <- p %>%
+    add_trace(
+      data = model_data,
+      x = ~get(x_col),
+      y = ~get(y_col),
+      type = "scatter",
+      mode = "markers",
+      marker = list(
+        color = point_color,
+        size = dot_size,
+        opacity=0.7
+      ),
+      text = ~cluster,
+      hoverinfo = "text+x+y",
+      hovertext = ~paste("Cluster:", cluster, 
+                         "<br>", x_col, ":", round(get(x_col), 4),
+                         "<br>", y_col, ":", round(get(y_col), 4)),
+      showlegend = FALSE
+    )
+  
+  # Add threshold line if specified
+  if (!is.null(threshold)) {
+    # Only show threshold in legend for first plot
+    show_threshold_legend <- (plot_index == 1)
+    
+    p <- p %>%
+      add_trace(
+        x = c(threshold, threshold),
+        y = c(min(data[[y_col]], na.rm = TRUE), max(data[[y_col]], na.rm = TRUE)),
+        type = "scatter",
+        mode = "lines",
+        line = list(color = "black", dash = "dash", width = 1.5),
+        name = paste("Threshold:", threshold),
+        legendgroup = "threshold",
+        hoverinfo = "text",
+        hovertext = paste("Threshold:", threshold)
+      ) %>%
+      layout(showlegend = show_threshold_legend)
+  }
+  
+  return(p)
+}
+
+# Basic plot grid
+create_basic_plot_grid <- function(data, plots_config, axis_labels, nrows, ncols, 
+                                     model_to_use="multiome_powerlaw_v3",
+                                     point_color='darkslategrey', title = NULL, dot_size = 8,
+                                     width=NULL, height=NULL, fontsize=NULL) {
+
+  # Check if configuration is valid
+  if(length(plots_config) > nrows * ncols) {
+    warning("More plots specified than grid cells available. Some plots will be omitted.")
+    plots_config <- plots_config[1:(nrows * ncols)]
+  }
+  
+  # Generate all plots
+  plot_list <- list()
+  for(i in 1:length(plots_config)) {
+    config <- plots_config[[i]]
+    is_first_plot <- (i==1)
+    
+    # Create individual plot, passing the plot index
+    plt <- create_basic_plot(
+      data = data,
+      x_col = config$x_col,
+      y_col = config$y_col,
+      model = model_to_use,
+      threshold = config$threshold,
+      axis_labels = axis_labels,
+      point_color = point_color,
+      dot_size = dot_size,
+      plot_index = i,
+      width=width,
+      height=height
+    ) %>% layout(
+      margin = list(l = 80, r = 50, t = 250, b = 50),
+      font = list(size = fontsize)
+    )
+    
+    # This is the critical part: modify traces to only show legend items for the first plot
+    if (!is_first_plot) {
+      for (j in seq_along(plt$x$data)) {
+        plt$x$data[[j]]$showlegend <- FALSE
+      }
+    }
+    
+    plot_list[[i]] <- plt
+  }
+  
+  # Create subplot grid with reduced spacing
+  subplot_args <- c(
+    plot_list,
+    list(
+      nrows = nrows,
+      margin = 0.05,
+      titleX = TRUE,
+      titleY = TRUE,
+      shareX = FALSE,
+      shareY = FALSE
+    )
+  )
+  
+  grid_plot <- do.call(subplot, subplot_args)
+  
+  # Configure the layout
+  layout_args <- list(
+    #showlegend = TRUE,
+    legend = list(
+      orientation = "h",
+      xanchor = "center",
+      x = 0.5,
+      y = -0.1*ncols
     )
   )
   
@@ -315,13 +899,15 @@ create_violin_plot <- function(data, x_col,
                                group_col = "model_name", 
                                axis_labels = NULL,
                                color_map = NULL,
-                               #show_legend=TRUE,
                                point_size = 8,
                                box_width = 0.2,
                                jitter_proportion = 1,
                                violin_width = 0.6,
                                orientation = "h",
-                               plot_index = 1) {
+                               plot_index = 1,
+                               hide_reference_points=FALSE) {
+  # Categories to plot
+  group_values <- unique(data[[group_col]])
   
   # Default axis labels if not provided
   if(is.null(axis_labels)) {
@@ -329,7 +915,6 @@ create_violin_plot <- function(data, x_col,
   }
   
   # Get the grouping variable and create a default color map if not provided
-  group_values <- unique(data[[group_col]])
   if(is.null(color_map)) {
     default_colors <- RColorBrewer::brewer.pal(max(8, length(group_values)), "Set1")
     color_map <- setNames(default_colors[1:length(group_values)], group_values)
@@ -345,6 +930,10 @@ create_violin_plot <- function(data, x_col,
   for(group_val in group_values) {
     group_data <- data %>% filter(!!sym(group_col) == group_val)
     
+    # Control reference data display
+    points_setting <- if (group_val == "Sheth, Qiu" && hide_reference_points) "none" else "all"
+    jitter_setting <- if (group_val == "Sheth, Qiu" && hide_reference_points) 0 else jitter_proportion
+    
     # Add violin plot
     p <- p %>% add_trace(
       data = group_data,
@@ -354,12 +943,14 @@ create_violin_plot <- function(data, x_col,
       type = "violin",
       orientation = orientation,
       width = violin_width,
-      fillcolor = adjustcolor(color_map[group_val], alpha.f = 0.5),
+      fillcolor = adjustcolor(color_map[group_val], 
+                              alpha.f = if (group_val == "Sheth, Qiu") 0.3 else 0.5),
       # points
-      points = "all",
-      jitter = jitter_proportion,
+      points = points_setting,
+      jitter = jitter_setting,
       pointpos = 0,
-      marker = list(color = adjustcolor(color_map[group_val], alpha.f = 0.8)),
+      marker = list(color = adjustcolor(color_map[group_val], 
+                                        alpha.f = if (group_val == "Sheth, Qiu" && !hide_reference_points) 0.3 else 0.8)),
       # hide the automatic box plot
       box = list(visible = FALSE),
       line = list(color = color_map[group_val], width = 1),
@@ -388,7 +979,7 @@ create_violin_plot <- function(data, x_col,
       showlegend = FALSE,
       hoverinfo = "none"
     )
-
+    
     # # Add points
     # p <- p %>% add_trace(
     #   y = group_val, #rep(group_val, nrow(group_data)),
@@ -437,7 +1028,8 @@ create_violin_plot_grid <- function(data, xVars, group_col, axis_labels,
                                     nrows=3, 
                                     color_map = NULL, title = NULL,
                                     jitter_proportion = 0.6, violin_width = 1, 
-                                    box_width = 0.2, point_size = 6) {
+                                    box_width = 0.2, point_size = 6,
+                                    hide_reference_points=TRUE) {
   # Create default color map if not provided
   if(is.null(color_map)) {
     color_map <- assign_model_colors(unique(data[[group_col]]))
@@ -450,18 +1042,18 @@ create_violin_plot_grid <- function(data, xVars, group_col, axis_labels,
     
     # Create individual plot, passing the plot index
     plt <- create_violin_plot(
-      data = stats,
+      data = data,
       x_col = x_col,
       group_col = group_col,
       axis_labels = axis_labels,
-      color_map = assign_model_colors(unique(data[[group_col]])),
+      color_map = color_map,
       #show_legend = FALSE,
       point_size = point_size,
       jitter_proportion = jitter_proportion,
       box_width = box_width,
       violin_width = violin_width,
       plot_index = i,
-      #total_plots = length(xVars)
+      hide_reference_points=hide_reference_points
     )
     
     plot_list[[i]] <- plt
@@ -511,27 +1103,355 @@ create_violin_plot_grid <- function(data, xVars, group_col, axis_labels,
 }
 ```
 
-```{r dataset_metrics, echo=FALSE, fig.width=6, fig.height=3, out.width="100%"}
-# dataset configuration
-dataset_config <- describe_grid_configuration(
-  c("fragments_total", "umi_count"), 
-  c(cell_count = 100))
 
-# Create the gene metrics grid plot
-dataset_metrics <- create_cluster_plot_grid(
-  data = stats %>% filter(model_name == "multiome_powerlaw_v3"), 
-  plots_config = dataset_config,
-  label_key,
-  nrows = 1,
-  ncols = 2,
-  title = "Dataset Metrics",
-  fontsize=12
-)
+## Dataset metrics
+These plots show the number of ATAC fragments, RNA UMIs, and cells for each cell cluster.
+Any cell types with values below the recommended minimum cluster size for running scE2G are flagged below.
 
-dataset_metrics
+```{r warnings, echo=FALSE}
+## Flag problematic clusters
+stats <- filter_data(stats, "fragments_total", 2e6, announce=TRUE, remove=FALSE)
+stats <- filter_data(stats, "cell_count", 100, announce=TRUE, remove=FALSE)
+stats <- filter_data(stats, "umi_count", 1e6, announce=TRUE, remove=FALSE)
 ```
 
-```{r enhancer_metrics, echo=FALSE, fig.width=8, fig.height=6, out.width="100%"}
+```{r dataset_metrics_set_up, echo=FALSE, fig.width=6, fig.height=4, out.width="100%"}
+dataset_metrics_df <- multiome %>% 
+  filter(source == "Input Data") %>%
+  mutate(mean_fragments = fragments_total/cell_count, 
+         mean_umis = umi_count/cell_count)
+
+# dataset_metrics <- create_metrics_plot_grid(
+#   data = multiome %>% filter(source == "Input Data"),  
+#   category_col="source",
+#   plots_config = dataset_config_alt,
+#   axis_labels = label_key,
+#   thresholds=c(fragments_total = 2e6,
+#                cell_count = 100,
+#                umi_count = 1e6),
+#   y_log_scale=TRUE,
+#   nrows = 1,
+#   ncols = 3,
+#   title = paste("Dataset Metrics"),
+#   color_map = c(
+#     "Input Data" = "#1C2A43"
+#   )
+# )
+# 
+# dataset_metrics
+```
+
+```{r data_metrics_ATAC_UMI, echo=FALSE, fig.width=4, fig.height=4, out.width="100%"}
+create_cluster_plot2(dataset_metrics_df,
+                    "fragments_total", "umi_count", 
+                    plot_order = c("Sheth, Qiu", "Input Data"),
+                    category_col = "source",
+                    x_threshold = 2e6, 
+                    y_threshold = 1e6,
+                    axis_labels = label_key, 
+                    y_log_scale=TRUE,
+                    color_map = c(
+                      "Input Data" = "#1C2A43"
+                      )
+                    )
+```
+
+```{r dataset_metrics_per_cell, echo=FALSE, fig.width=6, fig.height=4, out.width="100%"}
+dataset_config_alt <- list(
+  list(
+    x_col = "cell_count",
+    y_col = "mean_fragments"
+  ),
+  list(
+    x_col = "cell_count",
+    y_col = "mean_umis"
+  )
+)
+
+# Create the gene metrics grid plot
+create_metrics_plot_grid(
+  data = dataset_metrics_df,  
+  category_col="source",
+  plots_config = dataset_config_alt,
+  axis_labels = label_key,
+  thresholds=c(fragments_total = 2e6,
+               cell_count = 100,
+               umi_count = 1e6),
+  y_log_scale=TRUE,
+  nrows = 1,
+  ncols = 3,
+  title = paste("Dataset Metrics"),
+  color_map = c(
+    "Input Data" = "#1C2A43"
+  )
+)
+```
+
+## Prediction properties table
+The following table shows aggregate properties of the scE2G predictions for each model and each cell type.  Swipe to see more columns.
+```{r interactive_table, echo=FALSE}
+# Interactive data table
+DT::datatable(stats %>% 
+                select(cluster, model_name, everything()) %>%
+                mutate(across(where(is.numeric), ~round(., 2))),
+              extensions= c("FixedColumns", "Scroller"),
+              options = list(
+                fixedColumns = list(leftColumns = 3),
+                scrollX = TRUE,
+                scrollY = TRUE #"400px"
+                )
+              )
+```
+
+## Model prediction property plots {.tabset}
+
+### scE2G Multiome
+```{r, echo=FALSE}
+model_pretty <- '(scE2G Multiome)'
+```
+
+#### Number of predicted enhancer-gene links `r model_pretty`
+These plots show the number of predicted enhancer-gene links, binarized at the model threshold, in each cell type. This property is expected to be stable across clusters in the recommended size range.  Use the pale grey clusters, from Sheth, Qiu et al 2024, to see how scE2G predictions on your input data compare to a verified reference.
+
+```{r e2g_links_multiome, echo=FALSE, fig.height=4, out.width="100%"}
+# Set-up
+e2g_links_config <- describe_grid_configuration(
+  c("n_enh_gene_links"), 
+  thresholds
+  )
+
+e2g_links <- create_cluster_plot_grid(
+  data = multiome,
+  category_col = "source",
+  plots_config = e2g_links_config,
+  plot_order = c("Sheth, Qiu", "Input Data"),
+  label_key,
+  nrows = 1,
+  ncols = 3,
+  fontsize = 10,
+  #title = paste("Enhancer Metrics", "-", unique(multiome$model_name)),
+  color_map = c(
+    "Input Data" = "#792374",
+    "Sheth, Qiu" = "grey"
+  )
+)
+
+e2g_links
+```
+
+#### Number of predicted unique enhancer elements `r model_pretty`
+These plots show the number of predicted unique enhancer elements passing the model threshold, in each cell type. This property is expected to be stable across clusters in the recommended size range.  The pale grey clusters are a reference from Sheth, Qiu et al. 2024.
+
+```{r unqiue_enhancers_multiome, echo=FALSE, fig.height=4, out.width="100%"}
+unqiue_enhancers_config <- describe_grid_configuration(
+  c("n_enh_elements"), 
+  thresholds)
+
+unqiue_enhancers <- create_cluster_plot_grid(
+  data = multiome,
+  category_col = "source",
+  plots_config = unqiue_enhancers_config,
+  plot_order = c("Sheth, Qiu", "Input Data"),
+  label_key,
+  nrows = 1,
+  ncols = 3,
+  fontsize = 10,
+  #title = paste("Enhancer Metrics", "-", unique(multiome$model_name)),
+  color_map = c(
+    "Input Data" = "#792374",
+    "Sheth, Qiu" = "grey"
+  )
+)
+
+# Display the plot
+unqiue_enhancers
+```
+
+#### Number of genes linked with at least one enhancer element `r model_pretty`
+These plots show the number of genes linked with at least one enhancer element, in each cell cluster. This property is expected to be stable across clusters in the recommended size range.  The pale grey clusters from Sheth, Qiu et al. 2024 can be used as a reference.
+
+```{r linked_genes_multiome, echo=FALSE, fig.width=8, fig.height=4, out.width="100%"}
+# Create the gene metrics grid plot
+linked_genes <- create_cluster_plot_grid(
+  data = multiome,
+  category_col = "source",
+  plots_config = describe_grid_configuration("n_genes_with_enh", thresholds),
+  plot_order = c("Sheth, Qiu", "Input Data"),
+  label_key,
+  nrows = 1,
+  ncols = 3,
+  fontsize=12,
+  color_map = c(
+    "Input Data" = "#792374",
+    "Sheth, Qiu" = "grey"
+  )
+)
+
+linked_genes
+```
+
+#### Number of genes with accessible promoters `r model_pretty`
+These plots show the count of genes whose promoters are loosely wrapped in chromatin and thus accessible to transcription factors, in each cell cluster. This property is expected to be stable across clusters in the recommended size range.  The pale grey clusters from Sheth, Qiu et al. 2024 can be used as a reference.
+
+```{r accessible_promoters_multiome, echo=FALSE, fig.width=8, fig.height=4, out.width="100%"}
+# Create the gene metrics grid plot
+accessible_promoters <- create_cluster_plot_grid(
+  data = multiome,
+  category_col = "source",
+  plots_config = describe_grid_configuration("n_genes_active_promoter", thresholds),
+  plot_order = c("Sheth, Qiu", "Input Data"),
+  label_key,
+  nrows = 1,
+  ncols = 3,
+  fontsize=12,
+  color_map = c(
+    "Input Data" = "#792374",
+    "Sheth, Qiu" = "grey"
+  )
+)
+
+accessible_promoters
+```
+
+#### Number of genes not expressed `r model_pretty`
+These plots show the count of genes in each cluster whose transcripts per million falls below the minimum threshold to be considered an expressed gene. This property is expected to be stable across clusters in the recommended size range.  The pale grey clusters from Sheth, Qiu et al. 2024 can be used as a reference for expected behaviour.
+
+```{r genes_not_expressed_multiome, echo=FALSE, fig.width=8, fig.height=4, out.width="100%"}
+# Create the gene metrics grid plot
+below_TPM <- create_cluster_plot_grid(
+  data = multiome,
+  category_col = "source",
+  plots_config = describe_grid_configuration("n_genes_not_expressed", thresholds),
+  plot_order = c("Sheth, Qiu", "Input Data"),
+  label_key,
+  nrows = 1,
+  ncols = 3,
+  fontsize=12,
+  color_map = c(
+    "Input Data" = "#792374",
+    "Sheth, Qiu" = "grey"
+  )
+)
+
+below_TPM
+```
+
+#### Mean number of genes per enhancer `r model_pretty`
+These plots show the average count of expressed genes linked to each predicted enhancer in a cell cluster. This property is expected to be stable across clusters in the recommended size range.  The pale grey clusters from Sheth, Qiu et al. 2024 can be used as a reference for expected behaviour.
+
+```{r genes_per_enhancer_multiome, echo=FALSE, fig.width=8, fig.height=4, out.width="100%"}
+# Create the E2G metrics plot
+genes_per_enhancer <- create_cluster_plot_grid(
+  data = multiome,
+  category_col = "source",
+  plots_config = describe_grid_configuration("mean_genes_per_enh", thresholds),
+  plot_order = c("Sheth, Qiu", "Input Data"),
+  label_key,
+  nrows = 1,
+  ncols = 3,
+  fontsize=10,  
+  color_map = c(
+    "Input Data" = "#792374",
+    "Sheth, Qiu" = "grey"
+  )
+)
+
+genes_per_enhancer
+```
+
+#### Mean number of enhancers per gene `r model_pretty`
+These plots show the average count of predicted enhancers linked to each expressed gene in a cell cluster. This property is expected to be stable across clusters in the recommended size range.  The pale grey clusters from Sheth, Qiu et al. 2024 can be used as a reference for expected behaviour.
+
+```{r enhancers_per_gene_multiome, echo=FALSE, fig.width=8, fig.height=4, out.width="100%"}
+# Create the E2G metrics plot
+enhancers_per_gene <- create_cluster_plot_grid(
+  data = multiome,
+  category_col = "source",
+  plots_config = describe_grid_configuration("mean_enh_per_gene", thresholds),
+  plot_order = c("Sheth, Qiu", "Input Data"),
+  label_key,
+  nrows = 1,
+  ncols = 3,
+  fontsize=10,  
+  color_map = c(
+    "Input Data" = "#792374",
+    "Sheth, Qiu" = "grey"
+  )
+)
+
+enhancers_per_gene
+```
+
+#### Mean distance to TSS `r model_pretty`
+These plots show the average distance of a predicted enhancer to the transcription start site of the gene it regulates across each cell cluster. This property is expected to be stable across clusters in the recommended size range.  The pale grey clusters from Sheth, Qiu et al. 2024 can be used as a reference for expected behaviour.
+
+```{r distance_to_TSS_multiome, echo=FALSE, fig.width=8, fig.height=4, out.width="100%"}
+# Create the E2G metrics plot
+distance_to_TSS <- create_cluster_plot_grid(
+  data = multiome,
+  category_col = "source",
+  plots_config = describe_grid_configuration("mean_dist_to_tss", thresholds),
+  plot_order = c("Sheth, Qiu", "Input Data"),
+  label_key,
+  nrows = 1,
+  ncols = 3,
+  fontsize=10,
+  color_map = c(
+    "Input Data" = "#792374",
+    "Sheth, Qiu" = "grey"
+  )
+)
+
+distance_to_TSS
+```
+
+#### Mean width of an enhancer element `r model_pretty`
+These plots show the average width of predicted enhancers in each cell cluster. This property is expected to increase with ATAC-sequencing depth, because overlapping enhancer elements are merged for the purposes of predictions.  The pale grey clusters from Sheth, Qiu et al. 2024 can be used as a reference for expected behaviour.
+
+```{r enhancer_width_multiome, echo=FALSE, fig.width=8, fig.height=4, out.width="100%"}
+# Create the E2G metrics plot
+width_of_enhancer <- create_cluster_plot_grid(
+  data = multiome,
+  category_col = "source",
+  plots_config = describe_grid_configuration("mean_enh_width", thresholds),
+  plot_order = c("Sheth, Qiu", "Input Data"),
+  label_key,
+  nrows = 1,
+  ncols = 3,
+  fontsize=10,
+  color_map = c(
+    "Input Data" = "#792374",
+    "Sheth, Qiu" = "grey"
+  )
+)
+
+width_of_enhancer
+```
+
+#### QC Metric Distributions `r model_pretty`
+These violins illustrate the distributions of various properties of scE2G predictions on the input data to support quality control analysis.  The pale grey violins from Sheth, Qiu et al. 2024 can be used as a reference for expected behaviour.
+
+```{r violin_plot_multiome, echo=FALSE, fig.width=8, fig.height=9, out.width="100%"}
+violin_vars <- c('n_enh_gene_links', 'n_enh_elements', 'mean_genes_per_enh',
+                 'mean_enh_per_gene', 'n_genes_with_enh', 'n_genes_active_promoter',
+                 'n_genes_not_expressed', 'mean_dist_to_tss', 'mean_enh_width')
+
+create_violin_plot_grid(
+  multiome, 
+  violin_vars, 
+  "source",
+  label_key, 
+  color_map = c(
+    "Input Data" = "#792374",
+    "Sheth, Qiu" = "grey"
+  ),
+  title=paste("QC distributions", "-", unique(multiome$model_name))
+  )
+```
+
+### scE2G scATAC
+
+```{r enhancer_metrics_scATAC, echo=FALSE, fig.width=8, fig.height=6, out.width="100%"}
 # Set-up
 enh_vars <- c("n_enh_gene_links", "n_enh_elements")
 enhancer_config <- describe_grid_configuration(
@@ -540,19 +1460,26 @@ enhancer_config <- describe_grid_configuration(
 
 # Create the grid plot
 enhancer_metrics <- create_cluster_plot_grid(
-  data = stats,  
+  data = scATAC,
+  category_col = "source",
   plots_config = enhancer_config,
+  plot_order = c("Sheth, Qiu", "Input Data"),
   label_key,
   nrows = 2,
   ncols = 3,
-  fontsize = 10
+  fontsize = 10,
+  title = paste("Enhancer Metrics", "-", unique(scATAC$model_name)),
+  color_map = c(
+    "Input Data" = "#006479",
+    "Sheth, Qiu" = "grey"
+  )
 )
 
 # Display the plot
 enhancer_metrics
 ```
 
-```{r gene_metrics, echo=FALSE, fig.width=8, fig.height=9, out.width="100%"}
+```{r gene_metrics_scATAC, echo=FALSE, fig.width=8, fig.height=9, out.width="100%"}
 # Gene configuration
 gene_vars <- c("n_genes_with_enh", "n_genes_active_promoter", "n_genes_not_expressed")
 gene_config <- describe_grid_configuration(
@@ -561,21 +1488,27 @@ gene_config <- describe_grid_configuration(
 
 # Create the gene metrics grid plot
 gene_metrics <- create_cluster_plot_grid(
-  data = stats,  
+  data = scATAC,  
+  category_col = "source",
   plots_config = gene_config,
+  plot_order = c("Sheth, Qiu", "Input Data"),
   label_key,
   nrows = 3,
   ncols = 3,
-  title = "Gene Metrics",
+  title = paste("Gene Metrics", "-", unique(scATAC$model_name)),
   # width = 800,
   # height = 700,
-  fontsize=12
+  fontsize=12,
+  color_map = c(
+    "Input Data" = "#006479",
+    "Sheth, Qiu" = "grey"
+  )
 )
 
 gene_metrics
 ```
 
-```{r E2G_metrics, echo=FALSE, fig.width=8, fig.height=6, out.width="100%"}
+```{r E2G_metrics_scATAC, echo=FALSE, fig.width=8, fig.height=6, out.width="100%"}
 eg_vars <- c("mean_genes_per_enh", "mean_enh_per_gene")
 eg_config <- describe_grid_configuration(
   eg_vars, 
@@ -583,19 +1516,25 @@ eg_config <- describe_grid_configuration(
 
 # Create the E2G metrics plot
 eg_metrics <- create_cluster_plot_grid(
-  data = stats,
+  data = scATAC,
+  category_col = "source",
   plots_config = eg_config,
+  plot_order = c("Sheth, Qiu", "Input Data"),
   label_key,
   nrows = 2,
   ncols = 3,
-  title = "E2G Metrics",
-  fontsize=10
+  title = paste("E2G Metrics", "-", unique(scATAC$model_name)),
+  fontsize=10,
+  color_map = c(
+    "Input Data" = "#006479",
+    "Sheth, Qiu" = "grey"
+  )
 )
 
 eg_metrics
 ```
 
-```{r distance_metrics, echo=FALSE, fig.width=8, fig.height=6, out.width="100%"}
+```{r distance_metrics_scATAC, echo=FALSE, fig.width=8, fig.height=6, out.width="100%"}
 dist_vars <- c("mean_dist_to_tss", "mean_enh_width")
 dist_config <- describe_grid_configuration(
   dist_vars, 
@@ -603,22 +1542,40 @@ dist_config <- describe_grid_configuration(
 
 # Create the E2G metrics plot
 distance_metrics <- create_cluster_plot_grid(
-  data = stats,
+  data = scATAC,
+  category_col = "source",
   plots_config = dist_config,
+  plot_order = c("Sheth, Qiu", "Input Data"),
   label_key,
   nrows = 2,
   ncols = 3,
-  title = "Enhancer distance and size metrics",
-  fontsize=10
+  title = paste("Enhancer distance and size metrics<br>", unique(scATAC$model_name)),
+  fontsize=10,
+  color_map = c(
+    "Input Data" = "#006479",
+    "Sheth, Qiu" = "grey"
+  )
 )
 
 distance_metrics
 ```
 
-```{r violin_plot, echo=FALSE, fig.width=8, fig.height=9, out.width="100%"}
+```{r violin_plot_scATAC, echo=FALSE, fig.width=8, fig.height=9, out.width="100%"}
 violin_vars <- c('n_enh_gene_links', 'n_enh_elements', 'mean_genes_per_enh',
                  'mean_enh_per_gene', 'n_genes_with_enh', 'n_genes_active_promoter',
                  'n_genes_not_expressed', 'mean_dist_to_tss', 'mean_enh_width')
-create_violin_plot_grid(stats, violin_vars, "model_name",
-                        label_key, title="QC distributions")
+
+create_violin_plot_grid(
+  scATAC, 
+  violin_vars, 
+  "source",
+  label_key, 
+  color_map = c(
+    "Input Data" = "#006479",
+    "Sheth, Qiu" = "grey"
+  ),
+  title=paste("QC distributions", "-", unique(scATAC$model_name))
+  )
 ```
+
+## {-}
