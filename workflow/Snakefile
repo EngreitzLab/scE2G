@@ -25,8 +25,8 @@ else:
 	IGV_DIR = config["results_dir"]
 
 
-if "preprocessed_fragments" not in config:
-	config["preprocessed_fragments"] = False
+if "fragments_preprocessed" not in config:
+	config["fragments_preprocessed"] = False
 
 if "RNA_matrix_filtered" not in config:
 	config["RNA_matrix_filtered"] = True
