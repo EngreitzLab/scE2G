@@ -6,7 +6,6 @@ import os
 import yaml
 
 
-configfile: "config/config.yaml"
 conda: "mamba"
 
 
@@ -26,8 +25,8 @@ else:
 	IGV_DIR = config["results_dir"]
 
 
-if "preprocessed_fragments" not in config:
-	config["preprocessed_fragments"] = False
+if "fragments_preprocessed" not in config:
+	config["fragments_preprocessed"] = False
 
 if "RNA_matrix_filtered" not in config:
 	config["RNA_matrix_filtered"] = True
@@ -106,7 +105,7 @@ output_files.append(all_qc)
 
 if config["make_IGV_tracks"]:
 	output_files.extend(bedpe_files)
-	output_files.extend(atac_bw)
+	#output_files.extend(atac_bw)
 	output_files.extend(atac_bw_norm)
 
 if config["benchmark_performance"]:

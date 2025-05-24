@@ -13,7 +13,10 @@ suppressPackageStartupMessages({
   library(anndata)
   library(tools)
   library(dplyr)
+  library(tibble)
 })
+
+options(scipen = 999)
 
 ## Define functions --------------------------------------------------------------------------------
 
@@ -138,11 +141,15 @@ map_gene_names <- function(rna_matrix, df_exp, gene_gtf_path, abc_genes_path){
 
 	gene_key <- abc_genes$abc_name
 	names(gene_key) <- abc_genes$gene_ref_name
+  message("Number of genes in 1:1 key: ", length(gene_key))
 
 	# remove genes not in our gene universe	
 	row_sub <- intersect(rownames(rna_matrix), names(gene_key)) # gene ref names
 	rna_matrix_filt <- rna_matrix[row_sub,] # still gene ref names
 	rownames(rna_matrix_filt) <- gene_key[row_sub] # converted to abc names
+  message("Number of genes in RNA matrix before matching: ", length(rownames(rna_matrix)))
+  message("Number of genes in RNA matrix after matching: ", length(rownames(rna_matrix_filt)))
+
 
 	# do the same for expression df
 	df_exp_filt <- df_exp[row_sub,]
@@ -161,6 +168,7 @@ abc_genes_path = snakemake@params$abc_genes
 kendall_predictions_path = snakemake@output$kendall_predictions
 umi_count_path = snakemake@output$umi_count
 cell_count_path = snakemake@output$cell_count
+gex_out_path = snakemake@output$all_gex
 
 # Load candidate E-G pairs
 pairs.E2G = readGeneric(kendall_pairs_path,
@@ -208,6 +216,19 @@ df.exp_inf = data.frame(mean_log_normalized_rna = rowMeans(matrix.rna),
 gene_filtered_out = map_gene_names(matrix.rna, df.exp_inf, gene_gtf_path, abc_genes_path)
 matrix.rna_filt <- gene_filtered_out[[1]]
 df.exp_filt <-  gene_filtered_out[[2]]
+
+df.exp_filt.to_save <- df.exp_filt %>% 
+  rownames_to_column(var = "TargetGene") %>% 
+  select(TargetGene,
+    RNA_meanLogNorm = mean_log_normalized_rna,
+    RNA_pseudobulkTPM = RnaPseudobulkTPM,
+    RNA_percentCellsDetected = RnaDetectedPercent)
+
+fwrite(df.exp_filt.to_save, 
+       file = gex_out_path,
+       row.names = F,
+       quote = F,
+       sep = "\t")
 
 # Compute Kendall correlation
 pairs.E2G = kendall_multiple_genes(pairs.E2G,
