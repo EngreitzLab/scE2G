@@ -43,7 +43,7 @@ rule frag_to_tagAlign:
 		"""
 
 ## get fragment cell count
-if config["preprocessed_fragments"]:
+if config["fragments_preprocessed"]:
 	rule get_fragment_count:
 		input:
 			frag_file = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"]
