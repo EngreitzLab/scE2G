@@ -29,8 +29,8 @@ rule compute_kendall:
 				"{cluster}", 
 				"Kendall", 
 				"Pairs.Kendall.tsv.gz"),
-		umi_count = temp(os.path.join(RESULTS_DIR, "{cluster}", "umi_count.txt")),
-		cell_count = temp(os.path.join(RESULTS_DIR, "{cluster}", "cell_count.txt")),
+		umi_count = (os.path.join(RESULTS_DIR, "{cluster}", "umi_count.txt")),
+		cell_count = (os.path.join(RESULTS_DIR, "{cluster}", "cell_count.txt")),
 		all_gex = os.path.join(RESULTS_DIR, "{cluster}", "Kendall", "gene_expression_metrics.tsv.gz")
 	resources: 
 		mem_mb=partial(determine_mem_mb, min_gb=63),
