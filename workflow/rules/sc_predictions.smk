@@ -141,7 +141,8 @@ rule hover_plots:
 	params:
 		reference_clusters = REFERENCE_CLUSTERS,
 		results_dir = RESULTS_DIR,
-		code_dir = WORKFLOW_DIR
+		code_dir = WORKFLOW_DIR,
+		tab_template = os.path.join(WORKFLOW_DIR, "workflow", "scripts", "prediction_qc", "qc_plot_tab_template.Rmd")
 	conda:
 		"../envs/sc_e2g.yml"
 	resources:
