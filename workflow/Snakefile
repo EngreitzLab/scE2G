@@ -34,9 +34,13 @@ if "RNA_matrix_filtered" not in config:
 RESULTS_DIR = config["results_dir"] 
 SCRIPTS_DIR = os.path.join(os.getcwd(), "workflow", "scripts")
 CELL_CLUSTER_DF = pd.read_table(config["cell_clusters"]).set_index("cluster", drop=False)
-REFERENCE_CLUSTERS = config["reference_clusters"]
+if "reference_clusters" in config:
+	REFERENCE_CLUSTERS = config["reference_clusters"]
+elif os.path.exists("config/tables/sheth_qiu_2024_preprint_summary_stats.tsv"):
+	REFERENCE_CLUSTERS = "config/tables/sheth_qiu_2024_preprint_summary_stats.tsv"
+else: 
+	raise FileNotFoundError("reference_clusters not defined in config.yaml")
 WORKFLOW_DIR = os.getcwd()
-print("CURRENT WORKING DIRECTORY: ", WORKFLOW_DIR)
 
 ## Convert cell cluster config to a biosample config for the ABC pipeline
 ## Treat each cell cluster as a distinct biosample
