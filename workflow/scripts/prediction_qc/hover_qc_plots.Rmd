@@ -839,4 +839,4 @@ writeLines(tabs_text, tmp_file)
 
 ## {-}
 
-This report was generated using this R Markdown document. [*ADD LINK once merged with scE2G*]
+This report was generated using [this R Markdown document](https://github.com/EngreitzLab/scE2G/blob/hover_plots/workflow/scripts/prediction_qc/hover_qc_plots.Rmd) and [this template for generating tabs for each model](https://github.com/EngreitzLab/scE2G/blob/hover_plots/workflow/scripts/prediction_qc/qc_plot_tab_template.Rmd).
