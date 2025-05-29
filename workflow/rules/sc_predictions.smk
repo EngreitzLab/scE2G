@@ -154,7 +154,7 @@ rule hover_plots:
 	conda:
 		"../envs/sc_e2g.yml"
 	resources:
-		mem_mb=determine_mem_mb
+		mem_mb=encode_e2g.ABC.determine_mem_mb
 	output:
 		plot_html = os.path.join(RESULTS_DIR, "qc_plots", "predictions_qc_report.html")
 	script:
