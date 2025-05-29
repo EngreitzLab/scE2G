@@ -9,7 +9,7 @@ rule get_cell_barcodes:
 	input:
 		frag_file = get_processed_fragment_file
 	resources:
-		mem_mb = determine_mem_mb,
+		mem_mb = encode_e2g.ABC.determine_mem_mb,
 		temp_dir = os.path.join(RESULTS_DIR, "tmp")
 	threads: 8
 	output:
@@ -47,7 +47,7 @@ rule generate_atac_matrix:
 				"atac_matrix.rds"
 			)
 	resources:
-		mem_mb=determine_mem_mb
+		mem_mb=encode_e2g.ABC.determine_mem_mb
 	conda:
 		"../envs/sc_e2g.yml"
 	script:

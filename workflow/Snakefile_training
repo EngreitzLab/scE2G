@@ -9,7 +9,7 @@ import yaml
 configfile: "config/config_training.yaml"
 conda: "mamba"
 
-
+MAX_MEM_MB = config["max_memory_allocation_mb"]
 include: os.path.join("rules", "utils.smk")
 include: os.path.join("rules", "utils_training.smk")
 

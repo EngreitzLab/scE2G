@@ -1,5 +1,3 @@
-MAX_MEM_MB = 250 * 1000  # 250GB
-
 ## Update paths in the config obj to absolute path
 def make_paths_absolute(obj, base_path):
 	"""
@@ -16,15 +14,6 @@ def make_paths_absolute(obj, base_path):
 		if os.path.exists(new_file):
 			return new_file
 	return obj
-
-def determine_mem_mb(wildcards, input, attempt, min_gb=8):
-	# Memory resource calculator for snakemake rules
-	input_size_mb = input.size_mb
-	if ".gz" in str(input):
-		input_size_mb *= 8  # assume gz compressesed the file <= 8x
-	attempt_multiplier = 2 ** (attempt - 1)  # Double memory for each retry
-	mem_to_use_mb = attempt_multiplier *  max(4 * input_size_mb, min_gb * 1000)
-	return min(mem_to_use_mb, MAX_MEM_MB)
 
 ## Convert cell cluster config to biosample config for the ABC pipeline
 ## Each cell cluster is treated as a distinct biosample within the ABC framework
