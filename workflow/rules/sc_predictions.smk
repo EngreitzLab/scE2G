@@ -147,7 +147,7 @@ rule hover_plots:
 	input:
 		qc_stats = os.path.join(RESULTS_DIR, "qc_plots", "all_qc_stats.tsv")
 	params:
-		reference_clusters = REFERENCE_CLUSTERS,
+		reference_clusters = config["qc_reference"],
 		results_dir = RESULTS_DIR,
 		code_dir = WORKFLOW_DIR,
 		tab_template = os.path.join(WORKFLOW_DIR, "workflow", "scripts", "prediction_qc", "qc_plot_tab_template.Rmd")
@@ -156,6 +156,6 @@ rule hover_plots:
 	resources:
 		mem_mb=determine_mem_mb
 	output:
-		plot_html = os.path.join(RESULTS_DIR, "qc_plots", "hover_qc_plots.html")
+		plot_html = os.path.join(RESULTS_DIR, "qc_plots", "predictions_qc_report.html")
 	script:
-		os.path.join("{params.code_dir}", "workflow", "scripts", "prediction_qc", "hover_qc_plots.Rmd")
+		os.path.join("{params.code_dir}", "workflow", "scripts", "prediction_qc", "qc_report.Rmd")

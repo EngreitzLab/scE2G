@@ -15,11 +15,11 @@ fragments_preprocessed: False
 RNA_matrix_filtered: True
 
 ### REFERENCE FILES
-reference_clusters:  "config/tables/sheth_qiu_2024_preprint_summary_stats.tsv"
 gene_annotations: "resources/genome_annotations/gencode.v43.chr_patch_hapl_scaff.annotation.gtf.gz" # compatible with RNA matrix
 gene_TSS500: "resources/genome_annotations/CollapsedGeneBounds.hg38.intGENCODEv43.TSS500bp.bed" # gene list with promoter bounds
 genes: "resources/genome_annotations/CollapsedGeneBounds.hg38.intGENCODEv43.bed" # gene list with gene body bounds 
 crispr_dataset: "resources/EPCrisprBenchmark_ensemble_data_GRCh38.intGENCODEv43.tsv.gz" # crispr training data
+reference_clusters:  "resources/reference_qc_metrics_sheth_qiu_2024.tsv"
 
 ### SUBMODULE PARAMS 
 encode_re2g_dir: "ENCODE_rE2G"
