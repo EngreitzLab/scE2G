@@ -54,7 +54,7 @@ rule run_e2g_qnorm:
 	conda:
 		"../envs/sc_e2g.yml"
 	resources:
-		mem_mb=determine_mem_mb
+		mem_mb=encode_e2g.ABC.determine_mem_mb
 	output: 
 		prediction_file = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "encode_e2g_predictions.tsv.gz")
 	shell: 
@@ -88,7 +88,7 @@ rule element_and_gene_summaries:
 	conda:
 		"../envs/sc_e2g.yml"
 	resources:
-		mem_mb=determine_mem_mb
+		mem_mb=encode_e2g.ABC.determine_mem_mb
 	output: 
 		gene_list = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "scE2G_gene_list.tsv.gz"),
 		element_list = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "scE2G_element_list.tsv.gz")
@@ -130,7 +130,7 @@ rule plot_stats:
 	conda:
 		"../envs/sc_e2g.yml"
 	resources:
-		mem_mb=determine_mem_mb
+		mem_mb=encode_e2g.ABC.determine_mem_mb
 	output: 
 		all_stats = os.path.join(RESULTS_DIR, "qc_plots", "all_qc_stats.tsv"),
 		ds_stats = os.path.join(RESULTS_DIR, "qc_plots", "dataset_metrics.pdf"),

@@ -8,7 +8,7 @@ import yaml
 
 conda: "mamba"
 
-
+MAX_MEM_MB = config["max_memory_allocation_mb"]
 include: os.path.join("rules", "utils.smk")
 
 ## Update paths in the config to be compatible with github submodules
@@ -78,10 +78,12 @@ include: os.path.join("rules", "compute_kendall.smk")
 include: os.path.join("rules", "arc_e2g.smk")
 include: os.path.join("rules", "add_external_features.smk")
 include: os.path.join("rules", "sc_predictions.smk")
+include: os.path.join("rules", "save_configs.smk")
 
 
 ## Define the final outputs of the pipeline
-output_files = []
+output_files = [os.path.join(RESULTS_DIR, "config", "expanded_biosample_config.tsv")]
+
 biosample_model = list(zip(BIOSAMPLE_DF["biosample"], BIOSAMPLE_DF["model_dir_base"]))
 biosample_model_threshold = list(zip(BIOSAMPLE_DF["biosample"], BIOSAMPLE_DF["model_dir_base"], BIOSAMPLE_DF["model_threshold"]))
 
@@ -97,6 +99,8 @@ atac_bw_norm = [os.path.join(IGV_DIR, biosample, "ATAC_norm.bw") for biosample i
 
 model_perf = os.path.join(RESULTS_DIR, "crispr_benchmarking_performance_summary.tsv")
 
+
+
 ## Choose relevant output files
 output_files.extend(encode_e2g_predictions)
 output_files.extend(prediction_stats)
@@ -106,7 +110,7 @@ output_files.append(all_qc)
 
 if config["make_IGV_tracks"]:
 	output_files.extend(bedpe_files)
-	#output_files.extend(atac_bw)
+	#output_files.extend(atac_bw) # just output normalize!
 	output_files.extend(atac_bw_norm)
 
 if config["benchmark_performance"]:

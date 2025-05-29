@@ -21,7 +21,7 @@ rule frag_to_tagAlign:
 		"../envs/sc_e2g.yml"
 	threads: 8
 	resources:
-		mem_mb=determine_mem_mb,
+		mem_mb=encode_e2g.ABC.determine_mem_mb,
 		runtime=720*2,
 		temp_dir = 
 			os.path.join(
@@ -47,7 +47,7 @@ if config["fragments_preprocessed"]:
 	rule get_fragment_count:
 		input:
 			frag_file = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"]
-		resources: mem_mb=determine_mem_mb
+		resources: mem_mb=encode_e2g.ABC.determine_mem_mb
 		output:
 			fragment_count = (os.path.join(RESULTS_DIR, "{cluster}", "fragment_count.txt")),
 		shell:
@@ -65,7 +65,7 @@ else:
 			fragments_filtered = (os.path.join(RESULTS_DIR, "{cluster}", "fragments_filtered.tsv.gz"))
 		threads: 8
 		resources:
-			mem_mb=determine_mem_mb,
+			mem_mb=encode_e2g.ABC.determine_mem_mb,
 			runtime=720*2,
 			temp_dir = 
 				os.path.join(
@@ -94,7 +94,7 @@ rule frag_to_bigWig:
 		bigWig_file = os.path.join(IGV_DIR, "{cluster}", "ATAC.bw"),
 		bedGraph_file = temp(os.path.join(IGV_DIR, "{cluster}", "ATAC.bg"))
 	resources:
-		mem_mb=determine_mem_mb,
+		mem_mb=encode_e2g.ABC.determine_mem_mb,
 		runtime_hr=24,
 		temp_dir = os.path.join(RESULTS_DIR, "tmp")
 	threads: 16
@@ -120,7 +120,7 @@ rule frag_to_norm_bigWig:
 		bigWig_file = os.path.join(IGV_DIR, "{cluster}", "ATAC_norm.bw"),
 		bedGraph_file = temp(os.path.join(IGV_DIR, "{cluster}", "ATAC_norm.bg"))
 	resources:
-		mem_mb=determine_mem_mb,
+		mem_mb=encode_e2g.ABC.determine_mem_mb,
 		runtime_hr=24,
 		temp_dir=os.path.join(RESULTS_DIR, "tmp")
 	threads: 16
