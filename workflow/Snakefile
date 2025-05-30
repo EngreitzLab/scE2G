@@ -34,6 +34,7 @@ if "RNA_matrix_filtered" not in config:
 RESULTS_DIR = config["results_dir"] 
 SCRIPTS_DIR = os.path.join(os.getcwd(), "workflow", "scripts")
 CELL_CLUSTER_DF = pd.read_table(config["cell_clusters"]).set_index("cluster", drop=False)
+WORKFLOW_DIR = os.getcwd()
 
 ## Convert cell cluster config to a biosample config for the ABC pipeline
 ## Treat each cell cluster as a distinct biosample
@@ -90,7 +91,7 @@ encode_e2g_predictions = [os.path.join(RESULTS_DIR, biosample, model_name, "enco
 prediction_stats = [os.path.join(RESULTS_DIR, biosample, model_name, f"encode_e2g_predictions_threshold{threshold}_stats.tsv") for biosample,model_name,threshold in biosample_model_threshold]
 gene_lists = [os.path.join(RESULTS_DIR, biosample, model_name, "scE2G_gene_list.tsv.gz") for biosample,model_name in biosample_model]
 element_lists = [os.path.join(RESULTS_DIR, biosample, model_name, "scE2G_element_list.tsv.gz") for biosample,model_name in biosample_model]
-all_qc = os.path.join(RESULTS_DIR, "qc_plots", "all_qc_stats.tsv")
+all_qc = os.path.join(RESULTS_DIR, "qc_plots", "predictions_qc_report.html")
 
 bedpe_files = [os.path.join(IGV_DIR, biosample, model_name, f"encode_e2g_predictions_threshold{threshold}.bedpe") for biosample,model_name,threshold in biosample_model_threshold]
 atac_bw = [os.path.join(IGV_DIR, biosample, "ATAC.bw") for biosample in BIOSAMPLE_DF["biosample"]]

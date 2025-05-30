@@ -21,6 +21,7 @@ gene_annotations: "resources/genome_annotations/gencode.v43.chr_patch_hapl_scaff
 gene_TSS500: "resources/genome_annotations/CollapsedGeneBounds.hg38.intGENCODEv43.TSS500bp.bed" # gene list with promoter bounds
 genes: "resources/genome_annotations/CollapsedGeneBounds.hg38.intGENCODEv43.bed" # gene list with gene body bounds 
 crispr_dataset: "resources/EPCrisprBenchmark_ensemble_data_GRCh38.intGENCODEv43.tsv.gz" # crispr training data
+qc_reference:  "resources/reference_qc_metrics_sheth_qiu_2024.tsv"
 
 ### SUBMODULE PARAMS 
 encode_re2g_dir: "ENCODE_rE2G"

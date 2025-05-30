@@ -1,0 +1,171 @@
+
+```{r {{model}}_setup, echo=FALSE}
+# Set-up
+model_data <- bind_rows(
+  stats %>%
+    filter(model_name == '{{model}}') %>%
+    mutate(source = 'Input data'),
+  preprint %>%
+    filter(model_name == '{{model}}') %>%
+    mutate(source = 'Sheth, Qiu')
+)
+
+color_map = assign_model_color('{{model}}')
+
+model_pretty = pretty_name('{{model}}')
+```
+
+### {{model}}
+For all the properties shown below, we include data from Sheth, Qiu et al. 2024 as reference for expected numbers. 
+
+#### Number of predicted enhancer-gene links for `r model_pretty`
+These plots show the number of predicted enhancer-gene links, binarized at the model threshold in each cell type. This property is expected to be stable across clusters in the recommended size range. 
+
+```{r e2g_links_{{model}}, echo=FALSE, fig.width=10, fig.height=4, out.width='100%'} 
+create_cluster_plots_row(
+  data = model_data,
+  y_col = 'n_enh_gene_links',
+  category_col = 'source',
+  plot_order = c('Sheth, Qiu', 'Input data'), 
+  thresholds = thresholds,
+  axis_labels = label_key, 
+  color_map = color_map
+)
+```
+
+#### Number of predicted unique enhancer elements for `r model_pretty`
+These plots show the number of predicted unique enhancer elements passing the model threshold in each cell type. This property is expected to be stable across clusters in the recommended size range. 
+
+```{r unqiue_enhancers_{{model}}, echo=FALSE, fig.width=10, fig.height=4, out.width="100%"}
+create_cluster_plots_row(
+  data = model_data,
+  y_col = "n_enh_elements",
+  category_col = "source",
+  plot_order = c("Sheth, Qiu", "Input data"), 
+  thresholds = thresholds,
+  axis_labels = label_key, 
+  color_map = color_map
+)
+```
+
+#### Number of genes linked with at least one enhancer element for `r model_pretty`
+These plots show the number of genes linked to at least one enhancer in each cell type. This property is expected to be stable across clusters in the recommended size range.
+
+```{r linked_genes_{{model}}, echo=FALSE, fig.width=10, fig.height=4, out.width="100%"}
+create_cluster_plots_row(
+  data = model_data,
+  y_col = "n_genes_with_enh",
+  category_col = "source",
+  plot_order = c("Sheth, Qiu", "Input data"), 
+  thresholds = thresholds,
+  axis_labels = label_key, 
+  color_map = color_map
+)
+```
+
+#### Number of genes with accessible promoters for `r model_pretty`
+These plots show the number of genes with promoter accessibility above the 30th percentile within each cell type. Genes with promoter accessibility below this threshold were not considered for predictions. This property is expected to be stable for clusters with the recommended number of ATAC fragments.
+
+```{r accessible_promoters_{{model}}, echo=FALSE, fig.width=10, fig.height=4, out.width="100%"}
+create_cluster_plots_row(
+  data = model_data,
+  y_col = "n_genes_active_promoter",
+  category_col = "source",
+  plot_order = c("Sheth, Qiu", "Input data"), 
+  thresholds = thresholds,
+  axis_labels = label_key, 
+  color_map = color_map
+)
+```
+
+#### Number of genes not expressed for `r model_pretty`
+These plots show the number of genes in each cell type with expression levels below the TPM cutoff for the model (only applicable when RNA data is provided) This property is expected to be stable across clusters with the recommended number of RNA UMIs.
+
+```{r genes_not_expressed_{{model}}, echo=FALSE, fig.width=10, fig.height=4, out.width="100%"}
+create_cluster_plots_row(
+  data = model_data,
+  y_col = "n_genes_not_expressed",
+  category_col = "source",
+  plot_order = c("Sheth, Qiu", "Input data"), 
+  thresholds = thresholds,
+  axis_labels = label_key, 
+  color_map = color_map
+)
+```
+
+#### Mean number of genes per enhancer for `r model_pretty`
+These plots show the average number of genes linked to enhancers in each cell type. This property is expected to be stable across clusters in the recommended size range.
+
+```{r genes_per_enhancer_{{model}}, echo=FALSE, fig.width=10, fig.height=4, out.width="100%"}
+create_cluster_plots_row(
+  data = model_data,
+  y_col = "mean_genes_per_enh",
+  category_col = "source",
+  plot_order = c("Sheth, Qiu", "Input data"), 
+  thresholds = thresholds,
+  axis_labels = label_key, 
+  color_map = color_map
+)
+```
+
+#### Mean number of enhancers per gene for `r model_pretty`
+These plots show the average number of enhancers linked to each gene with at least one enhancer in each cell type. This property is expected to be stable across clusters in the recommended size range. 
+
+```{r enhancers_per_gene_{{model}}, echo=FALSE, fig.width=10, fig.height=4, out.width="100%"}
+create_cluster_plots_row(
+  data = model_data,
+  y_col = "mean_enh_per_gene",
+  category_col = "source",
+  plot_order = c("Sheth, Qiu", "Input data"), 
+  thresholds = thresholds,
+  axis_labels = label_key, 
+  color_map = color_map
+)
+```
+
+#### Mean distance to TSS for `r model_pretty`
+These plots show the average distance of a predicted enhancer to the transcription start site of the gene it regulates across each cell cluster. This property is expected to be stable across clusters in the recommended size range.
+
+```{r distance_to_TSS_{{model}}, echo=FALSE, fig.width=10, fig.height=4, out.width="100%"}
+create_cluster_plots_row(
+  data = model_data,
+  y_col = "mean_dist_to_tss",
+  category_col = "source",
+  plot_order = c("Sheth, Qiu", "Input data"), 
+  thresholds = thresholds,
+  axis_labels = label_key, 
+  color_map = color_map
+)
+```
+
+#### Mean width of an enhancer element for `r model_pretty`
+These plots show the average width of predicted enhancers in each cell cluster. This property is expected to increase with ATAC sequencing depth, because overlapping enhancer elements are merged for the purposes of predictions.
+
+```{r enhancer_width_{{model}}, echo=FALSE, fig.width=10, fig.height=4, out.width="100%"}
+create_cluster_plots_row(
+  data = model_data,
+  y_col = "mean_enh_width",
+  category_col = "source",
+  plot_order = c("Sheth, Qiu", "Input data"), 
+  thresholds = thresholds,
+  axis_labels = label_key, 
+  color_map = color_map
+)
+```
+
+#### QC Metric Distributions `r model_pretty`
+These violin plots illustrate the distributions of various properties of scE2G predictions on the input data to support quality control analysis.
+
+```{r violin_plot_{{model}}, echo=FALSE, fig.width=10, fig.height=9, out.width="100%"}
+violin_vars <- c('n_enh_gene_links', 'n_enh_elements', 'mean_genes_per_enh',
+                 'mean_enh_per_gene', 'n_genes_with_enh', 'n_genes_active_promoter',
+                 'n_genes_not_expressed', 'mean_dist_to_tss', 'mean_enh_width')
+
+create_violin_plot_grid(
+  model_data, 
+  violin_vars, 
+  "source",
+  label_key, 
+  color_map = color_map
+  )
+```
