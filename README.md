@@ -63,7 +63,7 @@ To configure the pipeline:
 
 Running the pipeline:
 ```
-snakemake -j1 --use-conda
+snakemake -j1 --use-conda --configfile config/config.yaml
 ```
 This command make take a while the first time you run it, as it needs to build the conda environments. 
 But if it takes more than 1 hour, that's usually a bad sign, meaning that you're not using mamba and/or need more memory to build the environment.
