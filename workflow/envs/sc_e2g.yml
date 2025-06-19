@@ -3,7 +3,6 @@ channels:
   - bioconda
   - conda-forge
   - defaults
-  - anaconda
   - r
 dependencies:
   - bedtools=2.29.2
