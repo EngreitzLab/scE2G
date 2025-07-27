@@ -30,12 +30,14 @@ NumericVector count_diff(LogicalMatrix y_matrix_sorted) {
         long long concordant = 0;
         long long disconcordant = 0;
         long long cumsum = 0;
-        for (int i = 0; i < n; i++) {
-            bool tmp = y_matrix_sorted(i, j);
-            cumsum += tmp;
-            if (tmp) {
+        for (int i = 0; i < n; i++) { // i + 1 corresponds to rank k because y_matrix_sorted is sorted
+            bool accessibility = y_matrix_sorted(i, j);
+            cumsum += accessibility;
+            if (accessibility) {
+                // If accessibility is 1, increase discordant by (Rank - CumulativeSum)
                 disconcordant += (i + 1 - cumsum);
             } else {
+                // If accessibility is 0, increase concordant by CumulativeSum
                 concordant += cumsum;
             }
         }
@@ -56,26 +58,36 @@ kendall_one_gene = function(x, y.matrix){
     y.matrix[ord, ,drop = F]
   
   # Calculate initial differences between concordant and disconcordant pairs
-  n.diff = count_diff(as.matrix(y.matrix.sorted))
+  n.diff_all = count_diff(as.matrix(y.matrix.sorted))
   
-  # Adjust differences for ties in x
-  x.ties = unique(x.sorted[duplicated(x.sorted)])
+  # Calculate differences for ties in x
+  n.diff_ties = rep(0, ncol(y.matrix)) 	
+  x.ties = unique(x.sorted[duplicated(x.sorted)])  
   for (x.tie in x.ties) {
-    n.diff = 
-      n.diff - 
-      count_diff(as.matrix(y.matrix.sorted[x.sorted == x.tie, ,drop = F]))
+    # Calculate differences for each group of cells with equal gene expression x.tie 
+    n.diff = count_diff(as.matrix(y.matrix.sorted[x.sorted == x.tie, ,drop = F]))
+
+    # Take the sum of differences for all groups
+    n.diff_ties = 
+      n.diff_ties + n.diff      
   }
   
   # Calculate Kendall's tau-b coefficient
-  l = length(x)
-  s = colSums(y.matrix)
-  tx = table(x)
+  n = length(x) # Number of cells
+  n0 = choose(n, 2) # (n * (n - 1)) / 2
+	
+  tx = table(x) # Create a frequency table for gene expression data 'x'
+	        # If frequency = 1, there are no ties
+                # If frequency > 1, there are ties
+  n1 = sum(choose(tx, 2)) # Calculate the sum of combinations of choosing 2 from each frequency
+
+  s = colSums(y.matrix) # Calculate the number of cells with an open state for each peak
+  n2 = s*(s-1)/2 + (n-s)*(n-s-1)/2 # Calculate the sum of combinations of choosing 2 for: 
+	                           # open state: s*(s-1)/2
+	                           # closed state: (n-s)*(n-s-1)/2
+	                           # for each peak
   
-  n0 = choose(l, 2)
-  n1 = sum(choose(tx, 2))
-  n2 = (s*(s-1) + (l-s)*(l-s-1))/2
-  
-  tau_b = n.diff / sqrt((n0 - n1) * (n0 - n2))
+  tau_b = (n.diff_all - n.diff_ties) / sqrt((n0 - n1) * (n0 - n2))
   
   return(tau_b)
 }
@@ -99,9 +111,10 @@ kendall_multiple_genes = function(bed.E2G,
   # Compute Kendall correlation for each gene
   bed.E2G.output <- foreach(gene.name = unique(mcols(bed.E2G.filter)[,colname.gene_name]),
                             .combine = 'c') %do% {
-                              
+                              # select enhancer-gene pairs for one gene
                               bed.E2G.tmp <- bed.E2G.filter[mcols(bed.E2G.filter)[,colname.gene_name] == gene.name]
-                              
+
+	                      # compute Kendall correlation for one gene
                               mcols(bed.E2G.tmp)[, colname.output] = 
                                 kendall_one_gene(as.numeric(data.RNA[gene.name, ]),
                                                  t(data.ATAC[mcols(bed.E2G.tmp)[,colname.enhancer_name], , drop = F]))
