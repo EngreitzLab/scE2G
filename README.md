@@ -5,6 +5,8 @@ A computational pipeline for predicting genome-wide enhancer-gene regulatory lin
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![bioRxiv](https://img.shields.io/badge/bioRxiv-2024.11.23.624931v1-red.svg)](https://www.biorxiv.org/content/10.1101/2024.11.23.624931v1)
 
+<hr>
+
 ## Overview
 
 **Input:** Single-cell ATAC-seq or paired ATAC and RNA-seq (multiome) data per cell cluster
@@ -19,6 +21,8 @@ A computational pipeline for predicting genome-wide enhancer-gene regulatory lin
 4. **Feature integration** - Combine components 2 & 3 to construct feature file for predictive model
 5. **Model training** *(optional)* - Train predictive model using CRISPR-validated E-G pairs from K562 dataset
 6. **Prediction** - Apply trained model to assign scores to each element-gene pair
+
+<hr>
 
 ## Installation
 
@@ -45,6 +49,8 @@ conda config --set channel_priority flexible
 conda env create -f workflow/envs/run_snakemake.yml
 conda activate run_snakemake
 ```
+
+<hr>
 
 ## Usage
 
@@ -75,7 +81,7 @@ bgzip atac_fragments.tsv
 tabix -p bed atac_fragments.tsv.gz
 ```
 
-#### 2. RNA count matrix *(Multiome only)*
+#### 2. RNA count matrix *(multiome only)*
 
 - **Format:** Gene × cell matrix for each cell cluster
 - **Requirements:**
@@ -88,6 +94,27 @@ tabix -p bed atac_fragments.tsv.gz
 
 **Gene mapping:** By default, genes are mapped via Ensembl ID using GENCODE v43 annotations. Modify `gene_annotation` in `config/config.yaml` for different versions (e.g., GENCODE v32 for CellRanger data).
 
+<details>
+<summary><h4>Advanced file format options</h4></summary>
+
+**Pre-processed fragment files**
+
+If your fragment files are already properly sorted and filtered to main chromosomes, you can skip preprocessing steps by setting `fragments_preprocessed: True` in your config file. Use this option only if you are certain that your files:
+1. Are sorted with `sort -k1,1 -k2,2n` (chromosome then numerical position)
+2. Only contain fragments on chromosomes present in the chromosome sizes reference file
+
+This option allows you to skip the sorting and filtering steps of the pipeline, which can be very resource intensive for large fragment files.
+
+**Cell filtering configurations**
+
+The default pipeline settings assume the each cell cluster has a corresponding fragment file and RNA matrix that contain the exact same cells. If you instead have an RNA matrix containing cells from many clusters, you can avoid making cluster-specific matrices by setting `RNA_matrix_filtered: False` in your config file, and using the same RNA matrix for all clusters in your `cell_cluster_config`. The pipeline will then use the *intersection of cells contained in the cluster-specific fragment file and combined RNA matrix* to compute the Kendall correlation.
+Please note:
+1. You still must provide cluser-specific fragment files
+2. The RNA matrix must meet the formatting requirements indicated above
+3. The memory requirements to load a very large RNA matrix may exceed the default estimations in the pipeline.
+
+</details>
+
 ### Configuration
 
 1. **Main config** - Edit `config/config.yaml`:
@@ -97,7 +124,9 @@ tabix -p bed atac_fragments.tsv.gz
    - Specify cluster name, ATAC fragment file path, RNA matrix path
    - For ATAC-only analysis: leave RNA matrix path empty but include the column
    
-3. **Model selection** - Specify path to model directory in `models/` directory (e.g., `models/multiome_powerlaw_v3`)
+3. **Model selection** - Specify path to model directory, or a comma-separated list of multiple models. Current supported models estimate contact using a power law function of genomic distance:
+   - For multiome predictions: `models/multiome_powerlaw_v3`
+   - For ATAC-only predictions: `models/scATAC_powerlaw_v3`
 
 ### Running the pipeline
 
@@ -109,13 +138,58 @@ snakemake -j1 --use-conda --configfile config/config.yaml
 
 ### Output
 
-Results appear at the `results_dir` path with structure:
-```
-{results_dir}/{cell_cluster}/{model_name}/scE2G_predictions.tsv.gz
-{results_dir}/{cell_cluster}/{model_name}/scE2G_predictions_threshold{model_threshold}.tsv.gz
-```
+#### Key outputs
+- **Tabular predictions**
+  - `{results_dir}/{cell_cluster}/{model_name}/scE2G_predictions.tsv.gz`: All putative enhancer-gene predictions for a cell cluster
+  - `{results_dir}/{cell_cluster}/{model_name}/scE2G_predictions_threshold{model_threshold}.tsv.gz`: Thresholded predictions containing enhancer-gene pairs that pass score threshold and other filtering steps
+  - Key score column in these files is `E2G.Score.qnorm` (quantile-normalized scE2G score)
+- **Genome-browser files** (produced if `make_IGV_tracks: True` in your config file)
+  - `{IGV_dir}/{cell_cluster}/ATAC_norm.bw`: bigWig file with read-depth normalized pseudobulk ATAC signal 
+  - `{IGV_dir}/{cell_cluster}/scE2G_predictions_threshold{model_threshold}.bedpe`: bedpe file with filtered enhnancer-gene predictions
+- **QC report**
+  - `{results_dir}/qc_plots/predictions_qc_report.html`: Report summarizing properties of predictions in comparison to reference values
 
-**Key score column:** `E2G.Score.qnorm`
+<details>
+<summary><h4>Full output structure</h4></summary>
+  
+```
+{results_dir}/                                         # Main results directory
+├── {cell_cluster}/                                      # Outputs for each cell cluster
+│   ├── ActivityOnly_features.tsv.gz                       # All element-gene pairs with activity-based features
+│   ├── ActivityOnly_plus_external_features.tsv.gz         # All element-gene pairs with activity-based and other features
+│   ├── ARC/                                               # ARC-E2G results and intermediate files (multiome only)
+│   ├── external_features_config.tsv                       # Configuration for external features
+│   ├── feature_table.tsv                                  # Feature table reflecting all models designated for the cell cluster
+│   ├── genomewide_features.tsv.gz                         # Genome-wide element-gene pairs with features, formatted for model application
+│   ├── Kendall/                                           # Kendall correlation results and intermediate results (multiome only)
+│   ├── {model_name}/                                      # scE2G model-specific results (e.g., multiome_powerlaw_v3)
+│   │   ├── scE2G_predictions.tsv.gz                         # All predictions with scores
+│   │   ├── scE2G_predictions_threshold{threshold}.tsv.gz    # Filtered predictions
+│   │   ├── scE2G_predictions_threshold{threshold}_stats.tsv # Properties of filtered predictions
+│   │   ├── scE2G_element_list.tsv.gz                        # List of candidate elements and associated features
+│   │   └── scE2G_gene_list.tsv.gz                           # List of genes in reference file and associated features
+│   ├── Neighborhoods/                                    # Results from "Neighborhoods" step of ABC
+│   ├── new_features/                                     # Additional computed features
+│   ├── Peaks/                                            # Results from "Peaks" step of ABC
+│   ├── Predictions/                                      # Results from "Predictions" step of ABC
+│   ├── processed_genes_file.bed                          # Processed gene annotations
+│   ├── tagAlign/                                         # Results from converting fragment to tagAlign file
+│   └── to_generate.txt                                   # Pipeline generation tracking file
+└── qc_plots/                                           # Quality control outputs across clusters
+  └── predictions_qc_report.html                          # Report of prediction properties compared to reference
+  └── [PDFs of prediction property plots]
+
+{IGV_dir (= results_dir if not defined}/             # Genome-browser results directory (only if make_IGV_tracks is True)
+├── {cell_cluster}/                                    # Outputs for each cell cluster
+│   ├── ATAC.bw                                          # bigWig with unnormalized pseudobulk ATAC signal
+│   ├── ATAC_norm.bw                                     # bigWig with read-depth normalized pseudobulk ATAC signal
+└── └── {model_name}/                                    # scE2G model results (e.g., multiome_powerlaw_v3)
+       └── scE2G_predictions_threshold{threshold}.bedpe   # bedpe file corresponding to filtered predictions
+```
+  
+</details>
+
+<hr>
 
 ## Model training
 
@@ -153,15 +227,17 @@ snakemake -s workflow/Snakefile_training -j1 --use-conda
 
 Output appears at the path to `results_dir` specified in `config_training.yaml`.
 
-## License
+<hr>
+
+### License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Citation
+### Citation
 
 If you use scE2G in your research, please cite our preprint:
 [bioRxiv preprint](https://www.biorxiv.org/content/10.1101/2024.11.23.624931v1)
 
-## Support
+### Support
 
 For questions and issues, please use the [GitHub Issues](https://github.com/EngreitzLab/scE2G/issues) page.
