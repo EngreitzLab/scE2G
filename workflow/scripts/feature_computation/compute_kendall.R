@@ -21,7 +21,7 @@ options(scipen = 999)
 ## Define functions --------------------------------------------------------------------------------
 
 # Calculate the difference between concordant and disconcordant pairs from a sorted logical matrix
-# Refer to step 2 and 3 in Fig. S1 of Sheth, Qiu et al. 2024
+# Refer to step 2 and 3 in Fig. S1 of Sheth, Qiu et al. 2025
 cppFunction('
 NumericVector count_diff(LogicalMatrix y_matrix_sorted) {
     int n = y_matrix_sorted.nrow();
@@ -52,7 +52,7 @@ NumericVector count_diff(LogicalMatrix y_matrix_sorted) {
 kendall_one_gene = function(x, y.matrix){
   
   # Sort x in decreasing order and accordingly sort y.matrix
-  # Step 1 in Fig. S1 of Sheth, Qiu et al. 2024
+  # Step 1 in Fig. S1 of Sheth, Qiu et al. 2025
   ord = order(x, 
               decreasing = T)
   x.sorted = x[ord]
@@ -60,10 +60,10 @@ kendall_one_gene = function(x, y.matrix){
     y.matrix[ord, ,drop = F]
   
   # Calculate initial differences between concordant and disconcordant pairs
-  # Step 2 and 3 in Fig. S1 of Sheth, Qiu et al. 2024
+  # Step 2 and 3 in Fig. S1 of Sheth, Qiu et al. 2025
   n.diff_all = count_diff(as.matrix(y.matrix.sorted))
 
-  # Step 4 in Fig. S1 of Sheth, Qiu et al. 2024	
+  # Step 4 in Fig. S1 of Sheth, Qiu et al. 2025
   # Calculate differences for ties in x
   n.diff_ties = rep(0, ncol(y.matrix)) 	
   x.ties = unique(x.sorted[duplicated(x.sorted)])  
