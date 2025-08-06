@@ -52,9 +52,9 @@ rule save_reference_configs:
             
             # optional genome‐browser track
             if params.sce2g_config["make_IGV_tracks"]:
-                out["predictions_bedpe"] = os.path.join(params.IGV_dir,
+                out["predictions_bedpe"] = os.path.join(params.igv_dir,
                     biosample, model_name, f"scE2G_predictions_threshold{threshold}.tsv.gz")
-                out["ATAC_bw"] = os.path.join(params.IGV_dir,
+                out["ATAC_bw"] = os.path.join(params.igv_dir,
                     biosample, "ATAC_norm.bw")
 
             return pd.Series(out)

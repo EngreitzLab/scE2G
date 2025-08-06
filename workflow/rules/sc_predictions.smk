@@ -94,6 +94,27 @@ rule filter_sc_e2g_predictions:
 			--output_file {output.thresholded}
 		"""
 
+rule write_sc_e2g_predictions_bedpe:
+	input:
+		thresholded = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "scE2G_predictions_threshold{threshold}.tsv.gz")
+	params:
+		score_col = encode_e2g.config["final_score_col"],
+		scripts_dir = os.path.join(config["encode_re2g_dir"], encode_e2g.SCRIPTS_DIR)
+	output:
+		bedpe = os.path.join(IGV_DIR, "{cluster}", "{model_name}", "scE2G_predictions_threshold{threshold}.bedpe")
+	conda:
+		"../envs/sc_e2g.yml"
+	resources:
+		mem_mb=encode_e2g.ABC.determine_mem_mb
+	shell:
+		"""
+		python {params.scripts_dir}/model_application/process_model_output.py \
+			--predictions_file {input.thresholded} \
+			--score_column {params.score_col} \
+			--bedpe_output {output.bedpe}
+		"""
+
+
 def get_gex_file(wildcards):
 	with checkpoints.features_required.get(sample=wildcards.cluster).output.to_generate.open() as f:
 		val = f.read().strip()
