@@ -4,6 +4,7 @@ A computational pipeline for predicting genome-wide enhancer-gene regulatory lin
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![bioRxiv](https://img.shields.io/badge/bioRxiv-2024.11.23.624931v1-red.svg)](https://www.biorxiv.org/content/10.1101/2024.11.23.624931v1)
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/EngreitzLab/scE2G/tree/main.svg?style=shield)](https://dl.circleci.com/status-badge/redirect/gh/EngreitzLab/scE2G/tree/main)
 
 <hr>
 
