@@ -27,8 +27,7 @@ git submodule update --init --recursive
 
 ```
 
-When running for the first time, the conda environments have to be setup. 
-We highly recommend running scE2G using the environment specified in `workflow/envs/run_snakemake.yml`, which specifies the exact package versions compatible with the pipeline.
+We highly recommend running scE2G using the small conda environment specified in `workflow/envs/run_snakemake.yml`, which specifies the package versions compatible with the pipeline.
 
 ```
 conda config --set channel_priority flexible  # Make sure your conda config uses flexible channel packaging to prevent unsatisfiable errors
@@ -63,10 +62,8 @@ To configure the pipeline:
 
 Running the pipeline:
 ```
-snakemake -j1 --use-conda --configfile config/config.yaml
+snakemake --configfile config/config.yaml -j1 --use-conda --use-singularity
 ```
-This command make take a while the first time you run it, as it needs to build the conda environments. 
-But if it takes more than 1 hour, that's usually a bad sign, meaning that you're not using mamba and/or need more memory to build the environment.
 
 Output will show up in the `results/` directory by default, with the structure `results/cell_cluster/model_name/encode_e2g_predictions.tsv.gz`. The score column to use is `E2G.Score.qnorm`. 
 
@@ -84,6 +81,6 @@ Note that trained models generated using polynomial features cannot directly be 
 
 Running the pipeline:
 ```
-snakemake -s workflow/Snakefile_training -j1 --use-conda
+snakemake -s workflow/Snakefile_training --configfile config/config_training.yaml -j1 --use-conda --use-singularity
 ```
 Output will show up in the `results_training/` directory by default

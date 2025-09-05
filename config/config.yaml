@@ -15,7 +15,6 @@ fragments_preprocessed: False
 RNA_matrix_filtered: True
 max_memory_allocation_mb: 250000 # for submitted jobs
 
-
 ### REFERENCE FILES
 gene_annotations: "resources/genome_annotations/gencode.v43.chr_patch_hapl_scaff.annotation.gtf.gz" # compatible with RNA matrix
 gene_TSS500: "resources/genome_annotations/CollapsedGeneBounds.hg38.intGENCODEv43.TSS500bp.bed" # gene list with promoter bounds
@@ -23,7 +22,8 @@ genes: "resources/genome_annotations/CollapsedGeneBounds.hg38.intGENCODEv43.bed"
 crispr_dataset: "resources/EPCrisprBenchmark_ensemble_data_GRCh38.intGENCODEv43.tsv.gz" # crispr training data
 qc_reference:  "resources/reference_qc_metrics_sheth_qiu_2024.tsv"
 
-### SUBMODULE PARAMS 
+### WORKFLOW PARAMS 
+container: "library://mayasheth/e2g/sce2g_container:latest"
 encode_re2g_dir: "ENCODE_rE2G"
 model_dir: "models/"
 reference_features: ["numTSSEnhGene", "distance", "activity_base", "TargetGenePromoterActivityQuantile", "numNearbyEnhancers", "sumNearbyEnhancers", "is_ubiquitous_uniform", "P2PromoterClass", "numCandidateEnhGene", "hic_contact_pl_scaled_adj", "ABC.Score", "ABC.Numerator", "ABC.Denominator", "normalized_dhs_prom", "normalized_dhs_enh", "normalized_atac_prom", "normalized_atac_enh", "Kendall", "ARC.E2G.Score"]

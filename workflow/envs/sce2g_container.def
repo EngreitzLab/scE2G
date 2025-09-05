@@ -1,0 +1,47 @@
+BootStrap: docker
+From: condaforge/mambaforge:latest
+
+%labels
+    io.github.snakemake.containerized="true"
+    io.github.snakemake.conda_env_hash="66909812794565e808f663fd94f7582f35395196989b6f6274f261915f6240c5"
+
+%files
+    ENCODE_rE2G/ABC/workflow/envs/abcenv.yml /conda-envs/9b62b3e6343aea00c1292f933ed60782/environment.yaml
+    ENCODE_rE2G/workflow/envs/encode_re2g.yml /conda-envs/5f5016fa41329b5634f7ab4a79259171/environment.yaml
+    workflow/envs/sc_e2g.yml /conda-envs/a0275d56dbc04aece244b61d5589fd8f/environment.yaml
+
+%post
+    # Create conda environment directories
+    mkdir -p /conda-envs/9b62b3e6343aea00c1292f933ed60782
+    mkdir -p /conda-envs/5f5016fa41329b5634f7ab4a79259171
+    mkdir -p /conda-envs/a0275d56dbc04aece244b61d5589fd8f
+    
+    # Generate conda environments
+    mamba env create --prefix /conda-envs/9b62b3e6343aea00c1292f933ed60782 --file /conda-envs/9b62b3e6343aea00c1292f933ed60782/environment.yaml && \
+    mamba env create --prefix /conda-envs/5f5016fa41329b5634f7ab4a79259171 --file /conda-envs/5f5016fa41329b5634f7ab4a79259171/environment.yaml && \
+    mamba env create --prefix /conda-envs/a0275d56dbc04aece244b61d5589fd8f --file /conda-envs/a0275d56dbc04aece244b61d5589fd8f/environment.yaml && \
+    mamba clean --all -y
+
+%help
+    This container includes three conda environments required to run the scE2G pipeline:
+    
+    1. ABC environment (/conda-envs/9b62b3e6343aea00c1292f933ed60782)
+    2. ENCODE-rE2G environment (/conda-envs/5f5016fa41329b5634f7ab4a79259171)  
+    3. scE2G environment (/conda-envs/a0275d56dbc04aece244b61d5589fd8f)
+    
+    To activate an environment within the container:
+    source activate /conda-envs/[environment-hash]
+    
+    Or use conda/mamba commands directly with the --prefix flag.
+
+
+%runscript
+    # Default behavior when container is executed
+    echo "Bioinformatics container with ABC and ENCODE-rE2G environments"
+    echo "Available environments:"
+    echo "  ABC: /conda-envs/9b62b3e6343aea00c1292f933ed60782"  
+    echo "  ENCODE-rE2G: /conda-envs/5f5016fa41329b5634f7ab4a79259171"
+    echo "  scE2G: /conda-envs/a0275d56dbc04aece244b61d5589fd8f"
+    echo ""
+    echo "Usage: singularity exec scE2G_container.sif <command>"
+    echo "       singularity shell scE2G_container.sif"
