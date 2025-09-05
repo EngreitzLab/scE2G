@@ -82,7 +82,7 @@ class scE2GTest(unittest.TestCase):
 
         # Make sure the test doesn't take too long
         # May need to adjust as more biosamples are added
-        max_time = 60 * 50  # 40 min
+        max_time = 60 * 50  # 50 min
         self.assertLessEqual(
             time_taken,
             max_time,
