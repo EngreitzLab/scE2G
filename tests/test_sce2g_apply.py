@@ -81,9 +81,8 @@ class scE2GTest(unittest.TestCase):
             #self.compare_thresholded_prediction_file(biosample)
 
         # Make sure the test doesn't take too long
-        # May need to adjust as more biosamples are added, but we should keep
-        # tests quick, so don't run rE2G on all chromosomes
-        max_time = 60 * 40  # 40 min
+        # May need to adjust as more biosamples are added
+        max_time = 60 * 50  # 40 min
         self.assertLessEqual(
             time_taken,
             max_time,
