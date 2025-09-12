@@ -3,6 +3,7 @@ results_training/
 config/mine/
 config/archived/
 .snakemake/
+test/
 tests/test_output/
 workflow/scripts/mine/
 *.dot

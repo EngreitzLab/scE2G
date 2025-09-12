@@ -10,8 +10,11 @@ results_dir: "results/example_results/"
 # only set this to True if you are sure that your fragment files (1) are sorted  with sort -k1,1 2n,n and (2) only contain fragments on chromosomes in the chromosome sizes reference file 
 fragments_preprocessed: False 
 run_feature_analysis: False
-max_memory_allocation_mb: 250000 # for submitted jobs
-
+# max memory for submitted jobs
+max_memory_allocation_mb: 250000
+# number of threads for parallel computing of Kendall correlation
+# less than or equal to snakemake's global '-j' parameter
+threads: 1
 
 ### REFERENCE FILES
 gene_annotations: "resources/genome_annotations/gencode.v43.chr_patch_hapl_scaff.annotation.gtf.gz" # compatible with RNA matrix

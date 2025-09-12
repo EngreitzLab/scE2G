@@ -35,6 +35,8 @@ rule compute_kendall:
 	resources: 
 		mem_mb=partial(encode_e2g.ABC.determine_mem_mb, min_gb=63),
 		runtime=lambda wildcards, attempt: attempt*12*60
+	threads: 
+		config["threads"]
 	conda:
 		"../envs/sc_e2g.yml"
 	script:

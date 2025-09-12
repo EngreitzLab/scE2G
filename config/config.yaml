@@ -13,8 +13,13 @@ make_IGV_tracks: False # create ATAC bw and prediction bedpe files?
 fragments_preprocessed: False
 # set this to True if the RNA matrix contains the exact set of cells as the ATAC fragment file, and False if it contains more cells (default if not specified: True)
 RNA_matrix_filtered: True
-max_memory_allocation_mb: 250000 # for submitted jobs
-
+# If the cell count in a cell type exceeds the max_cell_count, randomly extract max_cell_count cells.
+max_cell_count: 20000
+# max memory for submitted jobs
+max_memory_allocation_mb: 250000
+# number of threads for parallel computing of Kendall correlation
+# less than or equal to snakemake's global '-j' parameter
+threads: 1
 
 ### REFERENCE FILES
 gene_annotations: "resources/genome_annotations/gencode.v43.chr_patch_hapl_scaff.annotation.gtf.gz" # compatible with RNA matrix

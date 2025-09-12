@@ -14,15 +14,18 @@ suppressPackageStartupMessages({
   library(tools)
   library(dplyr)
   library(tibble)
+  library(doParallel)
 })
 
 options(scipen = 999)
 
 ## Define functions --------------------------------------------------------------------------------
 
-# Calculate the difference between concordant and disconcordant pairs from a sorted logical matrix
-# Refer to step 2 and 3 in Fig. S1 of Sheth, Qiu et al. 2025
-cppFunction('
+# Compute Kendall correlation between a single gene and multiple enhancers
+kendall_one_gene = function(x, y.matrix){
+  # Calculate the difference between concordant and disconcordant pairs from a sorted logical matrix
+  # Refer to step 2 and 3 in Fig. S1 of Sheth, Qiu et al. 2025
+  cppFunction('
 NumericVector count_diff(LogicalMatrix y_matrix_sorted) {
     int n = y_matrix_sorted.nrow();
     int m = y_matrix_sorted.ncol();
@@ -47,9 +50,6 @@ NumericVector count_diff(LogicalMatrix y_matrix_sorted) {
     return result;
 }
 ')
-
-# Compute Kendall correlation between a single gene and multiple enhancers
-kendall_one_gene = function(x, y.matrix){
   
   # Sort x in decreasing order and accordingly sort y.matrix
   # Step 1 in Fig. S1 of Sheth, Qiu et al. 2025
@@ -101,29 +101,54 @@ kendall_one_gene = function(x, y.matrix){
 kendall_multiple_genes = function(bed.E2G,
                                   data.RNA,
                                   data.ATAC,
+                                  cores = 1,
                                   colname.gene_name = "gene_name",
                                   colname.enhancer_name = "peak_name",
                                   colname.output = "Kendall") {
   
   # Filter E2G pairs based on presence in RNA and ATAC data
-  bed.E2G.filter = 
+  bed.E2G.filter =
     bed.E2G[mcols(bed.E2G)[,colname.gene_name] %in% rownames(data.RNA) &
-              mcols(bed.E2G)[,colname.enhancer_name] %in% rownames(data.ATAC)] 
+              mcols(bed.E2G)[,colname.enhancer_name] %in% rownames(data.ATAC)]
   
-
+  # Check if parallel processing should be enabled based on the cores parameter 
+  if (cores > 1) {
+    # Start parallel cluster
+    cl <- makeCluster(cores)
+    registerDoParallel(cl)
+    
+    # Compute Kendall correlation for each gene
+    bed.E2G.output <- foreach(gene.name = unique(mcols(bed.E2G.filter)[,colname.gene_name]),
+                              .combine = 'c',
+                              .packages = c("GenomicRanges", "Matrix", "Rcpp"),
+			      .export = c("kendall_one_gene")) %dopar% {
+                                # select enhancer-gene pairs for one gene
+                                bed.E2G.tmp <- bed.E2G.filter[mcols(bed.E2G.filter)[,colname.gene_name] == gene.name]
+                                
+                                # compute Kendall correlation for one gene
+                                mcols(bed.E2G.tmp)[, colname.output] =
+                                  kendall_one_gene(as.numeric(data.RNA[gene.name, ]),
+                                                   t(data.ATAC[mcols(bed.E2G.tmp)[,colname.enhancer_name], , drop = F]))
+                                bed.E2G.tmp
+                              }
+    
+    stopCluster(cl)
+  } else {
+    # Compute Kendall correlation for each gene
+    bed.E2G.output <- foreach(gene.name = unique(mcols(bed.E2G.filter)[,colname.gene_name]),
+                              .combine = 'c',
+                              .packages = c("GenomicRanges")) %do% {
+                                # select enhancer-gene pairs for one gene
+                                bed.E2G.tmp <- bed.E2G.filter[mcols(bed.E2G.filter)[,colname.gene_name] == gene.name]
+                                
+                                # compute Kendall correlation for one gene
+                                mcols(bed.E2G.tmp)[, colname.output] =
+                                  kendall_one_gene(as.numeric(data.RNA[gene.name, ]),
+                                                   t(data.ATAC[mcols(bed.E2G.tmp)[,colname.enhancer_name], , drop = F]))
+                                bed.E2G.tmp
+                              }
+  }
   
-  # Compute Kendall correlation for each gene
-  bed.E2G.output <- foreach(gene.name = unique(mcols(bed.E2G.filter)[,colname.gene_name]),
-                            .combine = 'c') %do% {
-                              # select enhancer-gene pairs for one gene
-                              bed.E2G.tmp <- bed.E2G.filter[mcols(bed.E2G.filter)[,colname.gene_name] == gene.name]
-
-	                      # compute Kendall correlation for one gene
-                              mcols(bed.E2G.tmp)[, colname.output] = 
-                                kendall_one_gene(as.numeric(data.RNA[gene.name, ]),
-                                                 t(data.ATAC[mcols(bed.E2G.tmp)[,colname.enhancer_name], , drop = F]))
-                              bed.E2G.tmp
-                            }
   return(bed.E2G.output)
 }
 
@@ -186,6 +211,8 @@ kendall_predictions_path = snakemake@output$kendall_predictions
 umi_count_path = snakemake@output$umi_count
 cell_count_path = snakemake@output$cell_count
 gex_out_path = snakemake@output$all_gex
+
+cores = as.integer(snakemake@threads)
 
 # Load candidate E-G pairs
 pairs.E2G = readGeneric(kendall_pairs_path,
@@ -251,6 +278,7 @@ fwrite(df.exp_filt.to_save,
 pairs.E2G = kendall_multiple_genes(pairs.E2G,
                                    matrix.rna_filt,
                                    matrix.atac,
+				   cores = cores,
                                    colname.gene_name = "TargetGene",
                                    colname.enhancer_name = "PeakName",
                                    colname.output = "Kendall")

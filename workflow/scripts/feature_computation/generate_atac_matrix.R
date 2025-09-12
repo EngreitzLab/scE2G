@@ -17,6 +17,8 @@ rna_matrix_path = snakemake@input[["rna_matrix_path"]]
 cell_bc_path = snakemake@input[["cell_barcodes_path"]]
 atac_matrix_path = snakemake@output[["atac_matrix_path"]]
 
+max_cell_count = snakemake@params[["max_cell_count"]]
+
 # Read the enhancer-gene pairs and extract unique peaks
 pairs.e2g = readGeneric(kendall_pairs_path,
                         keep.all.metadata = T,
@@ -48,12 +50,19 @@ if (file_test("-f", cell_bc_path)) {
   message("Example cell: ", atac.cells[1])
 
   cells.use <- intersect(rna.cells, atac.cells)
-  message("Number of cells to use: ", length(cells.use))
 } else {
 	cells.use <- rna.cells
 }
 
+# If the cell count exceeds the max_cell_count, 
+# randomly extract max_cell_count cells
+if(length(cells.use) > max_cell_count){
+  set.seed(123)
+  cells.use <- sample(cells.use, max_cell_count)
+}
+
 names(cells.use) <- cells.use
+message("Number of cells to use: ", length(cells.use))
 
 # Create a list to store Signac Fragment object
 list.fragments = list()

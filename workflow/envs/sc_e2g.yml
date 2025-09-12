@@ -29,6 +29,7 @@ dependencies:
   - r-ggpubr
   - r-ggcorrplot
   - r-foreach
+  - r-doParallel
   - r-Signac
   - r-Seurat
   - r-Rcpp
