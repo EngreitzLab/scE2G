@@ -4,7 +4,7 @@
 model_data <- bind_rows(
   stats %>%
     filter(model_name == '{{model}}') %>%
-    mutate(source = 'Input data'),
+    mutate(source = 'Input Data'),
   preprint %>%
     filter(model_name == '{{model}}') %>%
     mutate(source = 'Sheth, Qiu')
@@ -26,7 +26,7 @@ create_cluster_plots_row(
   data = model_data,
   y_col = 'n_enh_gene_links',
   category_col = 'source',
-  plot_order = c('Sheth, Qiu', 'Input data'), 
+  plot_order = c('Sheth, Qiu', 'Input Data'), 
   thresholds = thresholds,
   axis_labels = label_key, 
   color_map = color_map
@@ -41,7 +41,7 @@ create_cluster_plots_row(
   data = model_data,
   y_col = "n_enh_elements",
   category_col = "source",
-  plot_order = c("Sheth, Qiu", "Input data"), 
+  plot_order = c("Sheth, Qiu", "Input Data"), 
   thresholds = thresholds,
   axis_labels = label_key, 
   color_map = color_map
@@ -56,7 +56,7 @@ create_cluster_plots_row(
   data = model_data,
   y_col = "n_genes_with_enh",
   category_col = "source",
-  plot_order = c("Sheth, Qiu", "Input data"), 
+  plot_order = c("Sheth, Qiu", "Input Data"), 
   thresholds = thresholds,
   axis_labels = label_key, 
   color_map = color_map
@@ -71,7 +71,7 @@ create_cluster_plots_row(
   data = model_data,
   y_col = "n_genes_active_promoter",
   category_col = "source",
-  plot_order = c("Sheth, Qiu", "Input data"), 
+  plot_order = c("Sheth, Qiu", "Input Data"), 
   thresholds = thresholds,
   axis_labels = label_key, 
   color_map = color_map
@@ -86,7 +86,7 @@ create_cluster_plots_row(
   data = model_data,
   y_col = "n_genes_not_expressed",
   category_col = "source",
-  plot_order = c("Sheth, Qiu", "Input data"), 
+  plot_order = c("Sheth, Qiu", "Input Data"), 
   thresholds = thresholds,
   axis_labels = label_key, 
   color_map = color_map
@@ -101,7 +101,7 @@ create_cluster_plots_row(
   data = model_data,
   y_col = "mean_genes_per_enh",
   category_col = "source",
-  plot_order = c("Sheth, Qiu", "Input data"), 
+  plot_order = c("Sheth, Qiu", "Input Data"), 
   thresholds = thresholds,
   axis_labels = label_key, 
   color_map = color_map
@@ -116,7 +116,7 @@ create_cluster_plots_row(
   data = model_data,
   y_col = "mean_enh_per_gene",
   category_col = "source",
-  plot_order = c("Sheth, Qiu", "Input data"), 
+  plot_order = c("Sheth, Qiu", "Input Data"), 
   thresholds = thresholds,
   axis_labels = label_key, 
   color_map = color_map
@@ -131,7 +131,7 @@ create_cluster_plots_row(
   data = model_data,
   y_col = "mean_dist_to_tss",
   category_col = "source",
-  plot_order = c("Sheth, Qiu", "Input data"), 
+  plot_order = c("Sheth, Qiu", "Input Data"), 
   thresholds = thresholds,
   axis_labels = label_key, 
   color_map = color_map
@@ -146,7 +146,7 @@ create_cluster_plots_row(
   data = model_data,
   y_col = "mean_enh_width",
   category_col = "source",
-  plot_order = c("Sheth, Qiu", "Input data"), 
+  plot_order = c("Sheth, Qiu", "Input Data"), 
   thresholds = thresholds,
   axis_labels = label_key, 
   color_map = color_map
