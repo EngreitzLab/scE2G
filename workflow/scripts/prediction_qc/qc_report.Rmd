@@ -18,12 +18,9 @@ library(DT)
 ```
 
 ```{r import_data, echo=FALSE, include=FALSE}
-# stats <- readr::read_tsv(snakemake@input$qc_stats)
-# preprint <- readr::read_tsv(snakemake@params$reference_clusters)
-# tab_template <- snakemake@params$tab_template
-stats <- readr::read_tsv("/oak/stanford/groups/engreitz/Users/kaybrand/scE2G/results/CharacterizationMcGinnis_Dataset7/qc_plots/all_qc_stats.tsv")
-preprint <- readr::read_tsv("/oak/stanford/groups/engreitz/Users/kaybrand/scE2G/resources/reference_qc_metrics_sheth_qiu_2024.tsv")
-tab_template <- "/oak/stanford/groups/engreitz/Users/kaybrand/scE2G/workflow/scripts/prediction_qc/qc_plot_tab_template.Rmd"
+stats <- readr::read_tsv(snakemake@input$qc_stats)
+preprint <- readr::read_tsv(snakemake@params$reference_clusters)
+tab_template <- snakemake@params$tab_template
 ```
 
 ```{r filter_data, echo=FALSE}
