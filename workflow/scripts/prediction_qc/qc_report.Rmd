@@ -14,7 +14,7 @@ output:
 library(plotly)
 library(dplyr)
 library(DT)
-library(knitr)
+#library(knitr)
 ```
 
 ```{r import_data, echo=FALSE, include=FALSE}
@@ -36,8 +36,7 @@ filter_data <- function(dataframe, column, threshold, announce=TRUE, remove=TRUE
       id_string <- paste(removed_identifiers, collapse=", ")
       
       # Create and print the warning once
-      stmt <- sprintf("WARNING: The following identifier(s) have less than %s in %s:\n%s", 
-                      format(threshold, scientific=TRUE), column, id_string)
+      stmt <- sprintf("<span style='color: red'>**WARNING: The following identifier(s) have less than %s in %s:\n%s**</span>", format(threshold, scientific=TRUE), column, id_string)
       cat(stmt, "\n")
     }
   }
@@ -134,10 +133,14 @@ pretty_name <- function(model) {
 thresholds <- c(fragments_total = 2e6,
               cell_count = 100,
               umi_count = 1e6)
+
+# for managing when cell count and umi count are not calculated
+no_cell_count = sum(stats$cell_count) < 1
+no_umi_count = sum(stats$umi_count) < 1
 ```
 
 ```{r scatter, echo=FALSE}
-# Adjustable scatter plot bassis of most plots)
+# Adjustable scatter plot basis of most plots)
 
 threshold_descriptor <- function(column) {
   if (grepl("fragments", column)) {
@@ -150,14 +153,14 @@ threshold_descriptor <- function(column) {
     return("")
   }
 }
-create_cluster_plot3 <- function(data, x_col, y_col, 
+create_cluster_plot <- function(data, x_col, y_col, 
                                  category_col = "model_name",
                                  plot_order = c(),
                                  x_threshold = NULL, y_threshold = NULL,
                                  axis_labels = NULL, color_map = NULL,
                                  dot_size = 8, plot_index = 1,
-                                 y_log_scale = FALSE,
                                  threshold_legend_group = "x_threshold",
+                                 log_scale_offset=1,
                                  width=NULL, height=NULL) {
   
   # Create determine plotting order if not specified
@@ -193,8 +196,13 @@ create_cluster_plot3 <- function(data, x_col, y_col,
   }
   
   # Calculate x-axis range with buffer to include threshold and all points
-  x_min <- min(c(data[[x_col]], x_threshold), na.rm = TRUE)
-  x_max <- max(c(data[[x_col]], x_threshold), na.rm = TRUE)
+  # x is always plotted on a log scale.  Add offset in case of zeros
+  x_offset <- paste0(x_col, "_offset")
+  data <- data %>% mutate(!!sym(x_offset) := !!sym(x_col) + log_scale_offset)
+  # adjusted minimum and maximum
+  x_min <- min(c(data[[x_offset]], x_threshold), na.rm = TRUE)
+  x_max <- max(c(data[[x_offset]], x_threshold), na.rm = TRUE)
+  # buffers and ranges
   buffer <- 0.1 * (log10(x_max) - log10(x_min))
   x_range <- c(10^(log10(x_min) - buffer), 10^(log10(x_max) + buffer))
   
@@ -202,12 +210,11 @@ create_cluster_plot3 <- function(data, x_col, y_col,
   # Also needed for x-threshold height
   y_min <- min(c(data[[y_col]], y_threshold), na.rm = TRUE)
   y_max <- max(c(data[[y_col]], y_threshold), na.rm = TRUE)
-  if (y_log_scale) {
-    y_lower <- floor(log10(min(c(data[[y_col]], na.rm = TRUE))))
-    y_upper <- ceiling(log10(max(c(data[[y_col]], na.rm = TRUE))))
-    spans_orders_of_magnitude <- (y_upper - y_lower) > 1
-  } else {
-    spans_orders_of_magnitude <- FALSE
+  # Determine if y should be plotted on a linear or log scale
+  spans_orders_of_magnitude <- ((log10(y_max+1) - log10(y_min+1)) > 1)
+  if (spans_orders_of_magnitude) {
+    y_offset <- paste0(y_col, "_offset")
+    data <- data %>% mutate(!!sym(y_offset) := !!sym(y_col) + log_scale_offset)
   }
   
   # Determine sizing
@@ -218,22 +225,14 @@ create_cluster_plot3 <- function(data, x_col, y_col,
   }
   
   # Plan the y-axis layout
-  if (y_log_scale & spans_orders_of_magnitude) {
+  if (spans_orders_of_magnitude) {
     # Log scale y
     yaxis_layout <- list(
       title = axis_labels[y_col],
       type = "log",
       tickformat = "~s",
-      tickvals = 10^(floor(log10(y_min)):ceiling(log10(y_max)))
       # disables autoscale
-    )
-  } else if (y_log_scale & !spans_orders_of_magnitude) {
-    # Log scale y
-    yaxis_layout <- list(
-      title = axis_labels[y_col],
-      type = "log",
-      tickformat = "~s"
-      # allows auto-scale
+      tickvals = 10^(floor(log10(y_min+1)):ceiling(log10(y_max+1)))
     )
   } else {
     # Linear scale
@@ -269,12 +268,12 @@ create_cluster_plot3 <- function(data, x_col, y_col,
     
     # Only show legend for the first plot
     show_this_legend <- (plot_index == 1)
-    
+    cat("Origin:", origin)
     p <- p %>%
       add_trace(
         data = model_data,
-        x = ~get(x_col),
-        y = ~get(y_col),
+        x = ~get(x_offset),
+        y = ~get(if (spans_orders_of_magnitude) y_offset else y_col),
         type = "scatter",
         mode = "markers",
         marker = list(
@@ -355,9 +354,10 @@ create_metrics_plot_grid <- function(data, plots_config, axis_labels, nrows, nco
                                      category_col = "model_name",
                                      plot_order = c(), 
                                      thresholds = c(),
-                                     y_log_scale=FALSE,
                                      color_map = NULL, title = NULL, dot_size = 8,
                                      width=NULL, height=NULL, fontsize=NULL) {
+  
+  
   # Create default color map if not provided
   categories <- unique(data[[category_col]])
   if(is.null(color_map)) {
@@ -383,14 +383,13 @@ create_metrics_plot_grid <- function(data, plots_config, axis_labels, nrows, nco
     config <- plots_config[[i]]
     
     # Create individual plot, passing the plot index
-    plt <- create_cluster_plot3(
+    plt <- create_cluster_plot(
       data = data,
       x_col = config$x_col,
       y_col = config$y_col,
       category_col=category_col,
       x_threshold = if (config$x_col %in% names(thresholds)) thresholds[[config$x_col]] else NULL,
       y_threshold = if (config$y_col %in% names(thresholds)) thresholds[[config$y_col]] else NULL,
-      y_log_scale = y_log_scale,
       axis_labels = axis_labels,
       plot_order = plot_order,
       color_map = color_map,
@@ -458,7 +457,10 @@ create_cluster_plots_row <- function(data, y_col, category_col = "model_name", p
                                      dot_size = 8) {
   
   # Define the x columns to use for each plot
-  x_columns <- names(thresholds)
+  input_data <- data %>% filter(source == 'Input data')
+  x_columns <- names(thresholds)[sapply(names(thresholds), function(x_col) {
+  any(input_data[[x_col]] > 0)
+  })] # Will not show plots where the x-axis was not calculated
   
   # Create a list to hold each subplot
   subplot_list <- list()
@@ -469,7 +471,7 @@ create_cluster_plots_row <- function(data, y_col, category_col = "model_name", p
     x_threshold <- thresholds[x_col]
     
     # Create custom legend behavior
-    plot <- create_cluster_plot3(
+    plot <- create_cluster_plot(
       data = data, 
       x_col = x_col, 
       y_col = y_col,
@@ -721,20 +723,68 @@ create_violin_plot_grid <- function(data, xVars, group_col, axis_labels,
 }
 ```
 
-
 ## Dataset metrics
 These plots show the number of ATAC fragments, RNA UMIs, and cells for each cell cluster.
 
+<i>
+Note: 
 
-Any cell types with values below the recommended minimum cluster size for running scE2G are flagged below.
-```{r warnings, echo=FALSE}
+* Any cell types with values below the recommended minimum cluster size for running scE2G are flagged below. Ideally, you will see no red text.
+</i>
+
+```{r warnings, echo=FALSE, results='asis'}
 ## Flag problematic clusters
 stats <- filter_data(stats, "fragments_total", 2e6, announce=TRUE, remove=FALSE)
-stats <- filter_data(stats, "cell_count", 100, announce=TRUE, remove=FALSE)
-stats <- filter_data(stats, "umi_count", 1e6, announce=TRUE, remove=FALSE)
+rotten_fruit <- filter_data(stats %>% filter(cell_count>0), "cell_count", 100, announce=TRUE, remove=FALSE)
+rotten_fruit <- filter_data(stats %>% filter(umi_count>0), "umi_count", 1e6, announce=TRUE, remove=FALSE)
 ```
 
-```{r dataset_metrics_set_up, echo=FALSE, fig.width=6, fig.height=4, out.width="100%"}
+
+```{r cell_count_warning, results = 'asis', echo=FALSE}
+empty_cells <- stats %>% filter(cell_count == 0)
+# Check if empty_cells has rows
+if (nrow(empty_cells) > 0) {
+  # Alert text with Markdown for italics
+  alert <- "* *Cell counts are not available for the following clusters:*"
+  
+  # Create a bullet point list of each empty_cells$cluster, also in italics and indented
+  bullet_points <- paste0("  * *", empty_cells$cluster, "*")
+  
+  # Combine all text into a single string with newline breaks
+  output_text <- paste(alert, paste(bullet_points, collapse = "\n"), sep = "\n")
+  
+  # Output the formatted text
+  cat(output_text, "\n")
+} else {
+  # Display nothing if empty_cells has no rows
+  cat("")
+}
+```
+
+
+```{r umi_count_warning, results = 'asis', echo=FALSE}
+empty_cells <- stats %>% filter(umi_count == 0)
+# Check if empty_cells has rows
+if (nrow(empty_cells) > 0) {
+  # Alert text with Markdown for italics
+  alert <- "* *RNA UMI counts are not available for the following clusters:*"
+  
+  # Create a bullet point list of each empty_cells$cluster, also in italics and indented
+  bullet_points <- paste0("  * *", empty_cells$cluster, "*")
+  
+  # Combine all text into a single string with newline breaks
+  output_text <- paste(alert, paste(bullet_points, collapse = "\n"), sep = "\n")
+  
+  # Output the formatted text
+  cat(output_text, "\n")
+} else {
+  # Display nothing if empty_cells has no rows
+  cat("")
+}
+```
+
+
+```{r dataset_metrics_set_up, echo=FALSE}
 one_model_name <- unique(stats$model_name)[1]
 
 dataset_metrics_df <- 
@@ -746,26 +796,43 @@ dataset_metrics_df <-
 ```
 
 ### Total sequencing depth
-This plot displays total RNA UMIs per cluster by total ATAC fragments per cluster.  Clusters that fall outside the 1st quadrant defined by the minimum threshold of 2 million ATAC fragments and 1 million RNA UMIs do not meet the minimum sequencing depth recommended for use in scE2G.
-```{r data_metrics_ATAC_UMI, echo=FALSE, fig.width=4, fig.height=4, out.width="100%"}
-create_cluster_plot3(dataset_metrics_df,
+```{r data_metrics_ATAC_UMI, echo=FALSE, results='asis', fig.width=4, fig.height=4, out.width="100%"}
+if (sum(dataset_metrics_df$umi_count) < 1) {
+  # There are no UMI counts
+  cat("This plot displays the total ATAC fragments per cluster.  Clusters that fall below the minimum threshold of 2 million ATAC fragments per cluster do not meet the minimum sequencing depth recommended for use in scE2G.")
+  create_cluster_plot(dataset_metrics_df,
+                    "fragments_total", "umi_count", 
+                    plot_order = c("Sheth, Qiu", "Input data"),
+                    category_col = "source",
+                    x_threshold = 2e6, 
+                    y_threshold = NULL,
+                    axis_labels = label_key, 
+                    color_map = c(
+                      "Input data" = "#1C2A43"
+                      )
+                    )
+} else {
+  cat("This plot displays total RNA UMIs per cluster by total ATAC fragments per cluster.  Clusters that fall outside the 1st quadrant defined by the minimum threshold of 2 million ATAC fragments and 1 million RNA UMIs do not meet the minimum sequencing depth recommended for use in scE2G.")
+  create_cluster_plot(dataset_metrics_df,
                     "fragments_total", "umi_count", 
                     plot_order = c("Sheth, Qiu", "Input data"),
                     category_col = "source",
                     x_threshold = 2e6, 
                     y_threshold = 1e6,
                     axis_labels = label_key, 
-                    y_log_scale=TRUE,
                     color_map = c(
                       "Input data" = "#1C2A43"
                       )
                     )
+}
 ```
 
 ### Average sequencing depth per cell
-These plots display the average count of ATAC fragments per cell and average count of RNA UMIs per cell in each cluster.  It is not recommended to run scE2G on clusters which fall to the left of the 100 cells threshold line.
-```{r dataset_metrics_per_cell, echo=FALSE, fig.width=6, fig.height=4, out.width="100%"}
-dataset_config_alt <- list(
+```{r dataset_metrics_per_cell, echo=FALSE, results='asis', fig.width=6, fig.height=4, out.width="100%"}
+if ((sum(dataset_metrics_df$cell_count) > 0) & (sum(dataset_metrics_df$umi_count) > 0)) {
+  cat("These plots display the average count of ATAC fragments per cell and average count of RNA UMIs per cell in each cluster.  It is not recommended to run scE2G on clusters which fall to the left of the 100 cells threshold line.")
+  
+  dataset_config_alt <- list(
   list(
     x_col = "cell_count",
     y_col = "mean_fragments"
@@ -785,13 +852,15 @@ create_metrics_plot_grid(
   thresholds=c(fragments_total = 2e6,
                cell_count = 100,
                umi_count = 1e6),
-  #y_log_scale=use_log_scale,
   nrows = 1,
   ncols = 3,
   color_map = c(
     "Input data" = "#1C2A43"
   )
 )
+} else {
+  cat("The cell count per cluster was not calculated for these data.  For reference, clusters run in scE2G should have at least 100 cells each.")
+}
 ```
 
 ## Prediction properties table
