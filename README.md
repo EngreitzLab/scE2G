@@ -30,8 +30,8 @@ A computational pipeline for predicting genome-wide enhancer-gene regulatory lin
 ### Clone repository
 
 ```bash
-# Clone the repository with submodules
-git clone --recurse-submodules https://github.com/EngreitzLab/scE2G.git
+# Quick clone with submodules
+git clone --recurse-submodules --shallow-submodules --depth 1 https://github.com/EngreitzLab/scE2G.git
 
 # Initialize and update nested submodules
 cd scE2G

@@ -18,6 +18,8 @@ qc_reference:  "resources/reference_qc_metrics_sheth_qiu_2024.tsv"
 
 ### PARAMS
 max_memory_allocation_mb: 250000 # for submitted jobs
+max_cell_count: 20000
+threads: 1
 encode_re2g_dir: "ENCODE_rE2G"
 model_dir: "models/"
 reference_features: ["numTSSEnhGene", "distance", "activity_base", "TargetGenePromoterActivityQuantile", "numNearbyEnhancers", "sumNearbyEnhancers", "is_ubiquitous_uniform", "P2PromoterClass", "numCandidateEnhGene", "hic_contact_pl_scaled_adj", "ABC.Score", "ABC.Numerator", "ABC.Denominator", "normalized_dhs_prom", "normalized_dhs_enh", "normalized_atac_prom", "normalized_atac_enh", "Kendall", "ARC.E2G.Score"]
@@ -28,5 +30,5 @@ max_cell_count: 20000
 # max memory for submitted jobs
 max_memory_allocation_mb: 250000
 # number of threads for parallel computing of Kendall correlation
-# less than or equal to snakemake's global '-j' parameter
 threads: 1
+
