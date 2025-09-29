@@ -268,7 +268,7 @@ create_cluster_plot <- function(data, x_col, y_col,
     
     # Only show legend for the first plot
     show_this_legend <- (plot_index == 1)
-    cat("Origin:", origin)
+
     p <- p %>%
       add_trace(
         data = model_data,
