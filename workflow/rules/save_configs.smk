@@ -46,15 +46,15 @@ rule save_reference_configs:
 
             # predictions
             out["predictions_full"] = os.path.join(params.results_dir,
-                biosample, model_name, "encode_e2g_predictions.tsv.gz")
+                biosample, model_name, "scE2G_predictions.tsv.gz")
             out["predictions_thresholded"] = os.path.join(params.results_dir,
-                biosample, model_name, f"encode_e2g_predictions_threshold{threshold}.tsv.gz")
+                biosample, model_name, f"scE2G_predictions_threshold{threshold}.tsv.gz")
             
             # optional genome‐browser track
             if params.sce2g_config["make_IGV_tracks"]:
-                out["predictions_bedpe"] = os.path.join(params.IGV_dir,
-                    biosample, model_name, f"encode_e2g_predictions_threshold{threshold}.tsv.gz")
-                out["ATAC_bw"] = os.path.join(params.IGV_dir,
+                out["predictions_bedpe"] = os.path.join(params.igv_dir,
+                    biosample, model_name, f"scE2G_predictions_threshold{threshold}.tsv.gz")
+                out["ATAC_bw"] = os.path.join(params.igv_dir,
                     biosample, "ATAC_norm.bw")
 
             return pd.Series(out)

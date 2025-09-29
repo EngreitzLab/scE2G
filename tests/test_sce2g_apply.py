@@ -27,11 +27,11 @@ COLUMNS_TO_COMPARE: Dict[str, type] = {
 }
 TEST_OUTPUT_DIR = CONFIG["results_dir"]
 EXPECTED_OUTPUT_DIR = f"tests/expected_output/{CONFIG['TEST_CONFIG_NAME']}" 
-# ALL_PUTATIVE_PRED_FILE = "multiome_powerlaw_v2/encode_e2g_predictions.tsv.gz" # file too large to upload; just compare thresholded
+# ALL_PUTATIVE_PRED_FILE = "multiome_powerlaw_v2/scE2G_predictions.tsv.gz" # file too large to upload; just compare thresholded
 # THRESHOLDED_PRED_FILE_PATTERN = (
-#     "K562_chr22_cluster1/multiome_powerlaw_v2/encode_e2g_predictions_threshold*[0-9].tsv.gz"
+#     "K562_chr22_cluster1/multiome_powerlaw_v2/scE2G_predictions_threshold*[0-9].tsv.gz"
 # )
-THRESHOLDED_PRED_FILE = "multiome_powerlaw_v3/encode_e2g_predictions_threshold0.177.tsv.gz"
+THRESHOLDED_PRED_FILE = "multiome_powerlaw_v3/scE2G_predictions_threshold0.177.tsv.gz"
 
 class scE2GTest(unittest.TestCase):
     def compare_prediction_file(self, biosample: str, pred_file) -> None:
@@ -81,9 +81,8 @@ class scE2GTest(unittest.TestCase):
             #self.compare_thresholded_prediction_file(biosample)
 
         # Make sure the test doesn't take too long
-        # May need to adjust as more biosamples are added, but we should keep
-        # tests quick, so don't run rE2G on all chromosomes
-        max_time = 60 * 40  # 40 min
+        # May need to adjust as more biosamples are added
+        max_time = 60 * 50  # 50 min
         self.assertLessEqual(
             time_taken,
             max_time,

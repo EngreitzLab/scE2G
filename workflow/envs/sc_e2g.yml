@@ -3,7 +3,6 @@ channels:
   - bioconda
   - conda-forge
   - defaults
-  - anaconda
   - r
 dependencies:
   - bedtools=2.29.2
@@ -30,6 +29,7 @@ dependencies:
   - r-ggpubr
   - r-ggcorrplot
   - r-foreach
+  - r-doParallel
   - r-Signac
   - r-Seurat
   - r-Rcpp

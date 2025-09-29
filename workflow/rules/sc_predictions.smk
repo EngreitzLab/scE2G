@@ -2,7 +2,7 @@
 # merge features with crispr data
 rule overlap_features_crispr_apply:
 	input:
-		prediction_file = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "encode_e2g_predictions.tsv.gz"),
+		prediction_file = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "scE2G_predictions.tsv.gz"),
 		crispr = config['crispr_dataset'],
 		feature_table_file = os.path.join(RESULTS_DIR, "{cluster}", "feature_table.tsv"),
 		tss = config['gene_TSS500']
@@ -56,7 +56,7 @@ rule run_e2g_qnorm:
 	resources:
 		mem_mb=encode_e2g.ABC.determine_mem_mb
 	output: 
-		prediction_file = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "encode_e2g_predictions.tsv.gz")
+		prediction_file = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "scE2G_predictions.tsv.gz")
 	shell: 
 		""" 
 		python {params.scripts_dir}/model_application/run_e2g_cv.py \
@@ -69,6 +69,52 @@ rule run_e2g_qnorm:
 			--crispr_benchmarking {params.crispr_benchmarking} \
 			--output_file {output.prediction_file}
 		"""
+
+rule filter_sc_e2g_predictions:
+	input:
+		prediction_file = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "scE2G_predictions.tsv.gz")
+	params:
+		threshold = lambda wildcards: encode_e2g.get_model_threshold(wildcards.cluster, wildcards.model_name),
+		include_self_promoter = encode_e2g.config["include_self_promoter"],
+		score_col = config["final_score_col"],
+		scripts_dir = os.path.join(config["encode_re2g_dir"], encode_e2g.SCRIPTS_DIR)
+	conda:
+		"../envs/sc_e2g.yml"
+	resources:
+		mem_mb=encode_e2g.ABC.determine_mem_mb
+	output:
+		thresholded = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "scE2G_predictions_threshold{threshold}.tsv.gz")
+	shell:
+		"""
+		python {params.scripts_dir}/model_application/threshold_e2g_predictions.py \
+			--all_predictions_file {input.prediction_file} \
+			--threshold {params.threshold} \
+			--score_column {params.score_col} \
+			--include_self_promoter {params.include_self_promoter} \
+			--output_file {output.thresholded}
+		"""
+
+rule write_sc_e2g_predictions_bedpe:
+	input:
+		thresholded = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "scE2G_predictions_threshold{threshold}.tsv.gz")
+	params:
+		score_col = encode_e2g.config["final_score_col"],
+		scripts_dir = os.path.join(config["encode_re2g_dir"], encode_e2g.SCRIPTS_DIR)
+	output:
+		bedpe = os.path.join(IGV_DIR, "{cluster}", "{model_name}", "scE2G_predictions_threshold{threshold}.bedpe")
+	conda:
+		"../envs/sc_e2g.yml"
+	resources:
+		mem_mb=encode_e2g.ABC.determine_mem_mb
+	shell:
+		"""
+		python {params.scripts_dir}/model_application/process_model_output.py \
+			--predictions_file {input.thresholded} \
+			--score_column {params.score_col} \
+			--bedpe_output {output.bedpe}
+		"""
+
+
 def get_gex_file(wildcards):
 	with checkpoints.features_required.get(sample=wildcards.cluster).output.to_generate.open() as f:
 		val = f.read().strip()
@@ -81,7 +127,7 @@ rule element_and_gene_summaries:
 	input:
 		abc_gene_list = os.path.join(RESULTS_DIR, "{cluster}", "Neighborhoods", "GeneList.txt"),
 		abc_element_list = os.path.join(RESULTS_DIR, "{cluster}", "Neighborhoods", "EnhancerList.txt"),
-		prediction_file = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "encode_e2g_predictions.tsv.gz"),
+		prediction_file = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "scE2G_predictions.tsv.gz"),
 		gene_expr_file = get_gex_file
 	params:
 		tpm_threshold = lambda wildcards: encode_e2g.get_tpm_threshold(wildcards.cluster, wildcards.model_name, BIOSAMPLE_DF)
@@ -105,8 +151,8 @@ def get_count_file(wildcards, metric):
 
 rule get_stats_per_model_per_cluster:
 	input:
-		pred_full = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "encode_e2g_predictions.tsv.gz"),
-		pred_thresholded = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "encode_e2g_predictions_threshold{threshold}.tsv.gz"),
+		pred_full = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "scE2G_predictions.tsv.gz"),
+		pred_thresholded = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "scE2G_predictions_threshold{threshold}.tsv.gz"),
 		fragment_count = os.path.join(RESULTS_DIR, "{cluster}", "fragment_count.txt"),
 		cell_count = lambda wildcards: get_count_file(wildcards, "cell_count"),
 		umi_count = lambda wildcards: get_count_file(wildcards, "umi_count")
@@ -117,14 +163,14 @@ rule get_stats_per_model_per_cluster:
 	resources:
 		mem_mb=32000
 	output: 
-		stats = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "encode_e2g_predictions_threshold{threshold}_stats.tsv")
+		stats = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "scE2G_predictions_threshold{threshold}_stats.tsv")
 	script:
 		"../scripts/prediction_qc/get_stats_per_cluster.R"
 
 biosample_model_threshold = list(zip(BIOSAMPLE_DF["biosample"], BIOSAMPLE_DF["model_dir_base"], BIOSAMPLE_DF["model_threshold"]))
 rule plot_stats:
 	input:
-		stats_files = [os.path.join(RESULTS_DIR, biosample, model_name, f"encode_e2g_predictions_threshold{threshold}_stats.tsv") for biosample,model_name,threshold in biosample_model_threshold]
+		stats_files = [os.path.join(RESULTS_DIR, biosample, model_name, f"scE2G_predictions_threshold{threshold}_stats.tsv") for biosample,model_name,threshold in biosample_model_threshold]
 	params:
 		score_column = "E2G.Score.qnorm"
 	conda:

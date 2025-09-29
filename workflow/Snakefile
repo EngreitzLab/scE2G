@@ -90,13 +90,13 @@ output_files = [os.path.join(RESULTS_DIR, "config", "expanded_biosample_config.t
 biosample_model = list(zip(BIOSAMPLE_DF["biosample"], BIOSAMPLE_DF["model_dir_base"]))
 biosample_model_threshold = list(zip(BIOSAMPLE_DF["biosample"], BIOSAMPLE_DF["model_dir_base"], BIOSAMPLE_DF["model_threshold"]))
 
-encode_e2g_predictions = [os.path.join(RESULTS_DIR, biosample, model_name, "encode_e2g_predictions.tsv.gz") for biosample,model_name in biosample_model]
-prediction_stats = [os.path.join(RESULTS_DIR, biosample, model_name, f"encode_e2g_predictions_threshold{threshold}_stats.tsv") for biosample,model_name,threshold in biosample_model_threshold]
+sc_e2g_predictions = [os.path.join(RESULTS_DIR, biosample, model_name, "scE2G_predictions.tsv.gz") for biosample,model_name in biosample_model]
+prediction_stats = [os.path.join(RESULTS_DIR, biosample, model_name, f"scE2G_predictions_threshold{threshold}_stats.tsv") for biosample,model_name,threshold in biosample_model_threshold]
 gene_lists = [os.path.join(RESULTS_DIR, biosample, model_name, "scE2G_gene_list.tsv.gz") for biosample,model_name in biosample_model]
 element_lists = [os.path.join(RESULTS_DIR, biosample, model_name, "scE2G_element_list.tsv.gz") for biosample,model_name in biosample_model]
 all_qc = os.path.join(RESULTS_DIR, "qc_plots", "predictions_qc_report.html")
 
-bedpe_files = [os.path.join(IGV_DIR, biosample, model_name, f"encode_e2g_predictions_threshold{threshold}.bedpe") for biosample,model_name,threshold in biosample_model_threshold]
+bedpe_files = [os.path.join(IGV_DIR, biosample, model_name, f"scE2G_predictions_threshold{threshold}.bedpe") for biosample,model_name,threshold in biosample_model_threshold]
 atac_bw = [os.path.join(IGV_DIR, biosample, "ATAC.bw") for biosample in BIOSAMPLE_DF["biosample"]]
 atac_bw_norm = [os.path.join(IGV_DIR, biosample, "ATAC_norm.bw") for biosample in BIOSAMPLE_DF["biosample"]]
 
@@ -105,7 +105,7 @@ model_perf = os.path.join(RESULTS_DIR, "crispr_benchmarking_performance_summary.
 
 
 ## Choose relevant output files
-output_files.extend(encode_e2g_predictions)
+output_files.extend(sc_e2g_predictions)
 output_files.extend(prediction_stats)
 output_files.append(gene_lists)
 output_files.append(element_lists)

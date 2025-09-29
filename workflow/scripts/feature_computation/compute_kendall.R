@@ -14,14 +14,18 @@ suppressPackageStartupMessages({
   library(tools)
   library(dplyr)
   library(tibble)
+  library(doParallel)
 })
 
 options(scipen = 999)
 
 ## Define functions --------------------------------------------------------------------------------
 
-# Calculate the difference between concordant and disconcordant pairs from a sorted logical matrix
-cppFunction('
+# Compute Kendall correlation between a single gene and multiple enhancers
+kendall_one_gene = function(x, y.matrix){
+  # Calculate the difference between concordant and disconcordant pairs from a sorted logical matrix
+  # Refer to step 2 and 3 in Fig. S1 of Sheth, Qiu et al. 2025
+  cppFunction('
 NumericVector count_diff(LogicalMatrix y_matrix_sorted) {
     int n = y_matrix_sorted.nrow();
     int m = y_matrix_sorted.ncol();
@@ -30,12 +34,14 @@ NumericVector count_diff(LogicalMatrix y_matrix_sorted) {
         long long concordant = 0;
         long long disconcordant = 0;
         long long cumsum = 0;
-        for (int i = 0; i < n; i++) {
-            bool tmp = y_matrix_sorted(i, j);
-            cumsum += tmp;
-            if (tmp) {
+        for (int i = 0; i < n; i++) { // i + 1 corresponds to rank k because y_matrix_sorted is sorted
+            bool accessibility = y_matrix_sorted(i, j);
+            cumsum += accessibility;
+            if (accessibility) {
+                // If accessibility is 1, increase discordant by (Rank - CumulativeSum)
                 disconcordant += (i + 1 - cumsum);
             } else {
+                // If accessibility is 0, increase concordant by CumulativeSum
                 concordant += cumsum;
             }
         }
@@ -44,11 +50,9 @@ NumericVector count_diff(LogicalMatrix y_matrix_sorted) {
     return result;
 }
 ')
-
-# Compute Kendall correlation between a single gene and multiple enhancers
-kendall_one_gene = function(x, y.matrix){
   
   # Sort x in decreasing order and accordingly sort y.matrix
+  # Step 1 in Fig. S1 of Sheth, Qiu et al. 2025
   ord = order(x, 
               decreasing = T)
   x.sorted = x[ord]
@@ -56,26 +60,38 @@ kendall_one_gene = function(x, y.matrix){
     y.matrix[ord, ,drop = F]
   
   # Calculate initial differences between concordant and disconcordant pairs
-  n.diff = count_diff(as.matrix(y.matrix.sorted))
-  
-  # Adjust differences for ties in x
-  x.ties = unique(x.sorted[duplicated(x.sorted)])
+  # Step 2 and 3 in Fig. S1 of Sheth, Qiu et al. 2025
+  n.diff_all = count_diff(as.matrix(y.matrix.sorted))
+
+  # Step 4 in Fig. S1 of Sheth, Qiu et al. 2025
+  # Calculate differences for ties in x
+  n.diff_ties = rep(0, ncol(y.matrix)) 	
+  x.ties = unique(x.sorted[duplicated(x.sorted)])  
   for (x.tie in x.ties) {
-    n.diff = 
-      n.diff - 
-      count_diff(as.matrix(y.matrix.sorted[x.sorted == x.tie, ,drop = F]))
+    # Calculate differences for each group of cells with equal gene expression x.tie 
+    n.diff = count_diff(as.matrix(y.matrix.sorted[x.sorted == x.tie, ,drop = F]))
+
+    # Take the sum of differences for all groups
+    n.diff_ties = 
+      n.diff_ties + n.diff      
   }
   
   # Calculate Kendall's tau-b coefficient
-  l = length(x)
-  s = colSums(y.matrix)
-  tx = table(x)
+  n = length(x) # Number of cells
+  n0 = choose(n, 2) # (n * (n - 1)) / 2
+	
+  tx = table(x) # Create a frequency table for gene expression data 'x'
+	        # If frequency = 1, there are no ties
+                # If frequency > 1, there are ties
+  n1 = sum(choose(tx, 2)) # Calculate the sum of combinations of choosing 2 from each frequency
+
+  s = colSums(y.matrix) # Calculate the number of cells with an open state for each peak
+  n2 = s*(s-1)/2 + (n-s)*(n-s-1)/2 # Calculate the sum of combinations of choosing 2 for: 
+	                           # open state: s*(s-1)/2
+	                           # closed state: (n-s)*(n-s-1)/2
+	                           # for each peak
   
-  n0 = choose(l, 2)
-  n1 = sum(choose(tx, 2))
-  n2 = (s*(s-1) + (l-s)*(l-s-1))/2
-  
-  tau_b = n.diff / sqrt((n0 - n1) * (n0 - n2))
+  tau_b = (n.diff_all - n.diff_ties) / sqrt((n0 - n1) * (n0 - n2))
   
   return(tau_b)
 }
@@ -85,28 +101,54 @@ kendall_one_gene = function(x, y.matrix){
 kendall_multiple_genes = function(bed.E2G,
                                   data.RNA,
                                   data.ATAC,
+                                  cores = 1,
                                   colname.gene_name = "gene_name",
                                   colname.enhancer_name = "peak_name",
                                   colname.output = "Kendall") {
   
   # Filter E2G pairs based on presence in RNA and ATAC data
-  bed.E2G.filter = 
+  bed.E2G.filter =
     bed.E2G[mcols(bed.E2G)[,colname.gene_name] %in% rownames(data.RNA) &
-              mcols(bed.E2G)[,colname.enhancer_name] %in% rownames(data.ATAC)] 
+              mcols(bed.E2G)[,colname.enhancer_name] %in% rownames(data.ATAC)]
   
-
+  # Check if parallel processing should be enabled based on the cores parameter 
+  if (cores > 1) {
+    # Start parallel cluster
+    cl <- makeCluster(cores)
+    registerDoParallel(cl)
+    
+    # Compute Kendall correlation for each gene
+    bed.E2G.output <- foreach(gene.name = unique(mcols(bed.E2G.filter)[,colname.gene_name]),
+                              .combine = 'c',
+                              .packages = c("GenomicRanges", "Matrix", "Rcpp"),
+			      .export = c("kendall_one_gene")) %dopar% {
+                                # select enhancer-gene pairs for one gene
+                                bed.E2G.tmp <- bed.E2G.filter[mcols(bed.E2G.filter)[,colname.gene_name] == gene.name]
+                                
+                                # compute Kendall correlation for one gene
+                                mcols(bed.E2G.tmp)[, colname.output] =
+                                  kendall_one_gene(as.numeric(data.RNA[gene.name, ]),
+                                                   t(data.ATAC[mcols(bed.E2G.tmp)[,colname.enhancer_name], , drop = F]))
+                                bed.E2G.tmp
+                              }
+    
+    stopCluster(cl)
+  } else {
+    # Compute Kendall correlation for each gene
+    bed.E2G.output <- foreach(gene.name = unique(mcols(bed.E2G.filter)[,colname.gene_name]),
+                              .combine = 'c',
+                              .packages = c("GenomicRanges")) %do% {
+                                # select enhancer-gene pairs for one gene
+                                bed.E2G.tmp <- bed.E2G.filter[mcols(bed.E2G.filter)[,colname.gene_name] == gene.name]
+                                
+                                # compute Kendall correlation for one gene
+                                mcols(bed.E2G.tmp)[, colname.output] =
+                                  kendall_one_gene(as.numeric(data.RNA[gene.name, ]),
+                                                   t(data.ATAC[mcols(bed.E2G.tmp)[,colname.enhancer_name], , drop = F]))
+                                bed.E2G.tmp
+                              }
+  }
   
-  # Compute Kendall correlation for each gene
-  bed.E2G.output <- foreach(gene.name = unique(mcols(bed.E2G.filter)[,colname.gene_name]),
-                            .combine = 'c') %do% {
-                              
-                              bed.E2G.tmp <- bed.E2G.filter[mcols(bed.E2G.filter)[,colname.gene_name] == gene.name]
-                              
-                              mcols(bed.E2G.tmp)[, colname.output] = 
-                                kendall_one_gene(as.numeric(data.RNA[gene.name, ]),
-                                                 t(data.ATAC[mcols(bed.E2G.tmp)[,colname.enhancer_name], , drop = F]))
-                              bed.E2G.tmp
-                            }
   return(bed.E2G.output)
 }
 
@@ -169,6 +211,8 @@ kendall_predictions_path = snakemake@output$kendall_predictions
 umi_count_path = snakemake@output$umi_count
 cell_count_path = snakemake@output$cell_count
 gex_out_path = snakemake@output$all_gex
+
+cores = as.integer(snakemake@threads)
 
 # Load candidate E-G pairs
 pairs.E2G = readGeneric(kendall_pairs_path,
@@ -234,6 +278,7 @@ fwrite(df.exp_filt.to_save,
 pairs.E2G = kendall_multiple_genes(pairs.E2G,
                                    matrix.rna_filt,
                                    matrix.atac,
+				   cores = cores,
                                    colname.gene_name = "TargetGene",
                                    colname.enhancer_name = "PeakName",
                                    colname.output = "Kendall")

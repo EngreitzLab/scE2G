@@ -10,17 +10,11 @@ rule get_cell_barcodes:
 		frag_file = get_processed_fragment_file
 	resources:
 		mem_mb = encode_e2g.ABC.determine_mem_mb,
-		temp_dir = os.path.join(RESULTS_DIR, "tmp")
-	threads: 8
 	output:
 		cell_barcodes = os.path.join(RESULTS_DIR, "{cluster}", "Kendall", "cell_barcodes.txt")
 	shell:
 		"""
-			export BUFFER_SIZE=$(awk -v mem_mb={resources.mem_mb} -v threads={threads} 'BEGIN {{ result = mem_mb/threads/2; print int(result) }}')
-			LC_ALL=C
-
-			zcat {input.frag_file} | cut -f 4 | sort -u --parallel {threads} -T {resources.temp_dir} -S $BUFFER_SIZE > {output.cell_barcodes}
-
+		zcat {input.frag_file} | cut -f 4 | awk '!seen[$0]++' > {output.cell_barcodes}
 		"""
 
 ## generate single-cell atac-seq matrix
@@ -46,6 +40,8 @@ rule generate_atac_matrix:
 				"Kendall", 
 				"atac_matrix.rds"
 			)
+	params:
+		max_cell_count = config['max_cell_count']
 	resources:
 		mem_mb=encode_e2g.ABC.determine_mem_mb
 	conda:
