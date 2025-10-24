@@ -25,6 +25,25 @@ A computational pipeline for predicting genome-wide enhancer-gene regulatory lin
 
 <hr>
 
+## System requirements
+
+### Hardware requirements
+
+The scE2G pipeline necessitates a standard computer furnished with ample RAM to facilitate the operations as defined by a user. 
+For optimal performance, we suggest using a computer equipped with 32+ GB RAM.
+
+### Software requirements
+
+The scE2G pipeline is compatible with Linux. It has been tested successfully on the following systems:
+- Linux: Red Hat Enterprise Linux 8.10 (Ootpa)
+- Linux: CentOS Linux 7 (Core)
+
+The software dependencies and versions on which the software has been tested are listed in 
+- `workflow/envs/run_snakemake.yml` 
+- `workflow/envs/sc_e2g.yml files`
+
+<hr>
+
 ## Installation
 
 ### Clone repository
@@ -135,7 +154,7 @@ Please note:
 snakemake -j1 --use-conda --configfile config/config.yaml
 ```
 
-> **Note:** First run may take time to build conda environments. If it exceeds 1 hour, ensure you're using mamba and have sufficient memory.
+> **Note:** First run may take time to build conda environments, usually around 30-40 minutes according to CircleCI tests. If it exceeds 1 hour, ensure you're using mamba and have sufficient memory.
 
 ### Output
 
