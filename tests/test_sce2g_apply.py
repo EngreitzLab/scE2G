@@ -70,7 +70,7 @@ class scE2GTest(unittest.TestCase):
 
     def run_test(self, config_file: str) -> None:
         start = time.time()
-        cmd = f"snakemake -j1 -F --configfile {config_file} --use-conda"
+        cmd = f"snakemake -j1 -F --configfile {config_file} --use-conda --use-singularity"
         run_cmd(cmd)
         time_taken = time.time() - start
 
