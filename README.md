@@ -150,6 +150,25 @@ Please note:
 
 ### Running the pipeline
 
+#### Option 1: Using Singularity container (recommended)
+
+This approach uses a pre-built container from SyLabs Cloud, so you only need to create the small `run_snakemake` environment locally.
+
+1. Create and activate the environment:
+```bash
+conda env create -f workflow/envs/run_snakemake.yml
+conda activate run_snakemake
+```
+
+2. Run the pipeline:
+```bash
+snakemake --configfile config/config.yaml -j1 --use-conda --use-singularity
+```
+
+#### Option 2: Using conda only
+
+This approach builds all conda environments locally, which can take significant time on first run.
+
 ```bash
 snakemake -j1 --use-conda --configfile config/config.yaml
 ```
@@ -241,8 +260,14 @@ Each model directory must contain:
 
 ### Running training workflow
 
+With Singularity (recommended):
 ```bash
-snakemake -s workflow/Snakefile_training -j1 --use-conda
+snakemake -s workflow/Snakefile_training --configfile config/config_training.yaml -j1 --use-conda --use-singularity
+```
+
+Or with conda only:
+```bash
+snakemake -s workflow/Snakefile_training --configfile config/config_training.yaml -j1 --use-conda
 ```
 
 Output appears at the path to `results_dir` specified in `config_training.yaml`.

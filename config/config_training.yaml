@@ -12,8 +12,7 @@ fragments_preprocessed: False
 run_feature_analysis: False
 # max memory for submitted jobs
 max_memory_allocation_mb: 250000
-# number of threads for parallel computing of Kendall correlation
-# less than or equal to snakemake's global '-j' parameter
+# number of threads for parallel computing of Kendall correlation (less than or equal to snakemake's global '-j' parameter)
 threads: 1
 
 ### REFERENCE FILES
@@ -22,7 +21,8 @@ gene_TSS500: "resources/genome_annotations/CollapsedGeneBounds.hg38.intGENCODEv4
 genes: "resources/genome_annotations/CollapsedGeneBounds.hg38.intGENCODEv43.bed" # gene list with gene body bounds 
 crispr_dataset: "resources/EPCrisprBenchmark_ensemble_data_GRCh38.intGENCODEv43.tsv.gz" # crispr training data
 
-### PARAMS
+### WORKFLOW PARAMS
+container: "library://mayasheth/e2g/sce2g_container:latest"
 encode_re2g_dir: "ENCODE_rE2G"
 reference_features: ["numTSSEnhGene", "distance", "activity_base", "TargetGenePromoterActivityQuantile", "numNearbyEnhancers", "sumNearbyEnhancers", "is_ubiquitous_uniform", "P2PromoterClass", "numCandidateEnhGene", "hic_contact_pl_scaled_adj", "ABC.Score", "ABC.Numerator", "ABC.Denominator", "normalized_dhs_prom", "normalized_dhs_enh", "normalized_atac_prom", "normalized_atac_enh", "Kendall", "ARC.E2G.Score"] 
 final_score_col: "E2G.Score.qnorm"

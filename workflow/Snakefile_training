@@ -8,6 +8,8 @@ import yaml
 
 configfile: "config/config_training.yaml"
 conda: "mamba"
+if "container" in config.keys():
+		containerized: config["container"]
 
 MAX_MEM_MB = config["max_memory_allocation_mb"]
 include: os.path.join("rules", "utils.smk")

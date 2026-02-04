@@ -17,6 +17,7 @@ crispr_dataset: "resources/EPCrisprBenchmark_ensemble_data_GRCh38.intGENCODEv43.
 qc_reference:  "resources/reference_qc_metrics_sheth_qiu_2024.tsv"
 
 ### PARAMS
+container: "library://mayasheth/e2g/sce2g_container:latest"
 max_memory_allocation_mb: 250000 # for submitted jobs
 max_cell_count: 20000
 threads: 1
