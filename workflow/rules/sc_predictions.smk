@@ -45,16 +45,16 @@ rule run_e2g_qnorm:
 		final_features = os.path.join(RESULTS_DIR, "{cluster}", "genomewide_features.tsv.gz"),
 	params:
 		epsilon = 0.01,
-		feature_table_file = lambda wildcards: encode_e2g.get_feature_table_file(wildcards.cluster, wildcards.model_name),
-		trained_model = lambda wildcards: encode_e2g.get_trained_model(wildcards.cluster, wildcards.model_name),
-		model_dir = lambda wildcards: encode_e2g._get_model_dir_from_wildcards(wildcards.cluster, wildcards.model_name, BIOSAMPLE_DF),
-		tpm_threshold =  lambda wildcards: encode_e2g.get_tpm_threshold(wildcards.cluster, wildcards.model_name, BIOSAMPLE_DF),
+		feature_table_file = lambda wildcards: get_feature_table_file(wildcards.cluster, wildcards.model_name),
+		trained_model = lambda wildcards: get_trained_model(wildcards.cluster, wildcards.model_name),
+		model_dir = lambda wildcards: _get_model_dir_from_wildcards(wildcards.cluster, wildcards.model_name, BIOSAMPLE_DF),
+		tpm_threshold = lambda wildcards: get_tpm_threshold(wildcards.cluster, wildcards.model_name, BIOSAMPLE_DF),
 		crispr_benchmarking = config["benchmark_performance"],
 		scripts_dir = SCRIPTS_DIR
 	conda:
 		"../envs/sc_e2g.yml"
 	resources:
-		mem_mb=encode_e2g.ABC.determine_mem_mb
+		mem_mb=ABC.determine_mem_mb
 	output: 
 		prediction_file = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "encode_e2g_predictions.tsv.gz")
 	shell: 
@@ -84,11 +84,11 @@ rule element_and_gene_summaries:
 		prediction_file = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "encode_e2g_predictions.tsv.gz"),
 		gene_expr_file = get_gex_file
 	params:
-		tpm_threshold = lambda wildcards: encode_e2g.get_tpm_threshold(wildcards.cluster, wildcards.model_name, BIOSAMPLE_DF)
+		tpm_threshold = lambda wildcards: get_tpm_threshold(wildcards.cluster, wildcards.model_name, BIOSAMPLE_DF)
 	conda:
 		"../envs/sc_e2g.yml"
 	resources:
-		mem_mb=encode_e2g.ABC.determine_mem_mb
+		mem_mb=ABC.determine_mem_mb
 	output: 
 		gene_list = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "scE2G_gene_list.tsv.gz"),
 		element_list = os.path.join(RESULTS_DIR, "{cluster}", "{model_name}", "scE2G_element_list.tsv.gz")
@@ -130,7 +130,7 @@ rule plot_stats:
 	conda:
 		"../envs/sc_e2g.yml"
 	resources:
-		mem_mb=encode_e2g.ABC.determine_mem_mb
+		mem_mb=ABC.determine_mem_mb
 	output: 
 		all_stats = os.path.join(RESULTS_DIR, "qc_plots", "all_qc_stats.tsv"),
 		ds_stats = os.path.join(RESULTS_DIR, "qc_plots", "dataset_metrics.pdf"),
@@ -154,7 +154,7 @@ rule hover_plots:
 	conda:
 		"../envs/sc_e2g.yml"
 	resources:
-		mem_mb=encode_e2g.ABC.determine_mem_mb
+		mem_mb=ABC.determine_mem_mb
 	output:
 		plot_html = os.path.join(RESULTS_DIR, "qc_plots", "predictions_qc_report.html")
 	script:

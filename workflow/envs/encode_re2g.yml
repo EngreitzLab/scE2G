@@ -1,0 +1,36 @@
+name: encode_re2g
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+  - anaconda
+  - r
+dependencies:
+  - bedtools=2.29.2
+  - mamba
+  - click
+  - ucsc-bedgraphtobigwig
+  - csvtk
+  - gzip
+  - numpy
+  - pandas
+  - pyarrow
+  - python>=3.6
+  - pytest-xdist
+  - pulp<2.8 # Pin pulp <2.8 for snakemake: https://github.com/snakemake/snakemake/issues/2608  
+  - pigz
+  - snakemake>=7,<8
+  - scikit-learn=1.2.1  # Must match with ENCODE-rE2G version
+  - shap
+  - scipy
+  - wget
+  - r-base
+  - r-r.utils
+  - r-data.table
+  - r-tidyverse
+  - r-ggpubr
+  - r-ggcorrplot
+  - seaborn
+  - samtools
+  - matplotlib
+  - bioconductor-genomicranges

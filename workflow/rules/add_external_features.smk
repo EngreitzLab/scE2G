@@ -37,7 +37,7 @@ rule make_external_features_config:
 		feature_inputs = features_to_generate
 	params:
 		dataset_config = config["cell_clusters"],
-		e2g_path = config["encode_re2g_dir"]
+		e2g_path = WORKFLOW_DIR
 	output:
 		external_features_config = os.path.join(RESULTS_DIR, "{sample}", "external_features_config.tsv")
 	conda:

@@ -2,13 +2,13 @@ from snakemake.utils import min_version
 min_version("7.0")
 
 import pandas as pd
+import numpy as np
 import os
 import yaml
 
 
 conda: "mamba"
 
-MAX_MEM_MB = config["max_memory_allocation_mb"]
 include: os.path.join("rules", "utils.smk")
 
 ## Update paths in the config to be compatible with github submodules
@@ -31,16 +31,17 @@ if "fragments_preprocessed" not in config:
 if "RNA_matrix_filtered" not in config:
 	config["RNA_matrix_filtered"] = True
 
-RESULTS_DIR = config["results_dir"] 
+RESULTS_DIR = config["results_dir"]
 SCRIPTS_DIR = os.path.join(os.getcwd(), "workflow", "scripts")
 CELL_CLUSTER_DF = pd.read_table(config["cell_clusters"]).set_index("cluster", drop=False)
 WORKFLOW_DIR = os.getcwd()
+MODEL_DIR = config["model_dir"]
 
 ## Convert cell cluster config to a biosample config for the ABC pipeline
 ## Treat each cell cluster as a distinct biosample
 config["ABC_BIOSAMPLES"] = os.path.join(
-	RESULTS_DIR, 
-	"tmp", 
+	RESULTS_DIR,
+	"tmp",
 	"config_abc_biosamples.tsv"
 	)
 make_biosample_config(
@@ -49,26 +50,33 @@ make_biosample_config(
 	RESULTS_DIR
 )
 
-## Import ENCODE_rE2G pipeline as a reusable module 
-encode_e2g_config = get_e2g_config(config, config["encode_re2g_dir"])
+## Import ABC pipeline as a reusable module
+abc_config = get_abc_config(config, config["abc_dir"])
 
-module encode_e2g:
+module ABC:
 	snakefile:
-		os.path.join(config["encode_re2g_dir"], "workflow", "Snakefile")
-	config: encode_e2g_config
+		os.path.join(config["abc_dir"], "workflow", "Snakefile")
+	config: abc_config
 
 ## Update scE2G config with consistent references
-config = update_scE2G_config(config, encode_e2g_config, config["encode_re2g_dir"])
+config = update_scE2G_config(config, abc_config, config["abc_dir"])
 
-## Include Snakemake rules from ENCODE_rE2G
-use rule * from encode_e2g exclude generate_e2g_predictions, format_external_features_config, get_stats, generate_plots, all
+## Include Snakemake rules from ABC (excluding all to use only as utility)
+use rule * from ABC exclude all as abc_*
 
-# expand biosamples config
-BIOSAMPLE_DF = encode_e2g.ABC.enable_retry(
-	pd.read_table, 
+# Expand biosamples config
+BIOSAMPLE_DF = ABC.enable_retry(
+	pd.read_table,
 	func_args={'filepath_or_buffer': config["ABC_BIOSAMPLES"]}
 )
-BIOSAMPLE_DF = encode_e2g.expand_biosample_df(BIOSAMPLE_DF)
+BIOSAMPLE_DF = expand_biosample_df(BIOSAMPLE_DF)
+
+# Define ABC_BIOSAMPLES_DIR mapping (each biosample's ABC output directory)
+ABC_BIOSAMPLES_DIR = {biosample: os.path.join(RESULTS_DIR, biosample) for biosample in BIOSAMPLE_DF["biosample"]}
+
+## Include E2G rules (consolidated from ENCODE_rE2G)
+include: os.path.join("rules", "e2g_genomewide_features.smk")
+include: os.path.join("rules", "e2g_predictions.smk")
 
 ## Include additional Snakemake rules
 include: os.path.join("rules", "frag_to_tagAlign.smk")
