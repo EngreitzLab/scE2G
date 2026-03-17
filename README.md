@@ -110,7 +110,7 @@ tabix -p bed atac_fragments.tsv.gz
   - Supported formats:
     - `.csv.gz`
     - `.h5ad` or `.h5` (may require matching `anndata` version)
-    - Sparse matrix directory (`matrix.mtx.gz`, `genes.tsv.gz`/`features.tsv.gz`, `barcodes.tsv.gz`)
+    - Sparse matrix directory (`matrix.mtx.gz`, `genes.tsv`/`features.tsv.gz`, `barcodes.tsv.gz`)
 
 **Gene mapping:** By default, genes are mapped via Ensembl ID using GENCODE v43 annotations. Modify `gene_annotation` in `config/config.yaml` for different versions (e.g., GENCODE v32 for CellRanger data).
 
