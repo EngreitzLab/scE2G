@@ -16,10 +16,17 @@ rule frag_to_tagAlign:
 				"{cluster}",
 				"tagAlign",
 				"tagAlign.sort.gz"
-			)
+			),
+		tagAlign_index_file =
+			os.path.join(
+				RESULTS_DIR,
+				"{cluster}",
+				"tagAlign",
+				"tagAlign.sort.gz.tbi"
+			)	
 	params:
 		chrSizes = config["chr_sizes"],
-		bedSplitSort = srcdir("../scripts/bedSplitSort.sh")
+		bedSplitSort = workflow.source_path("../scripts/bedSplitSort.sh")
 	conda:
 		"../envs/sc_e2g.yml"
 	threads: 8
