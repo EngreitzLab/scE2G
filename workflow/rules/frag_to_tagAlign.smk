@@ -10,33 +10,50 @@ rule frag_to_tagAlign:
 	input:
 		frag_file = get_processed_fragment_file
 	output:
-		tagAlign_sort_file = 
+		tagAlign_sort_file =
 			os.path.join(
-				RESULTS_DIR, 
-				"{cluster}", 
+				RESULTS_DIR,
+				"{cluster}",
 				"tagAlign",
 				"tagAlign.sort.gz"
-			)
+			),
+		tagAlign_index_file =
+			os.path.join(
+				RESULTS_DIR,
+				"{cluster}",
+				"tagAlign",
+				"tagAlign.sort.gz.tbi"
+			)	
+	params:
+		chrSizes = config["chr_sizes"],
+		bedSplitSort = workflow.source_path("../scripts/bedSplitSort.sh")
 	conda:
 		"../envs/sc_e2g.yml"
 	threads: 8
 	resources:
 		mem_mb=encode_e2g.ABC.determine_mem_mb,
 		runtime=720*2,
-		temp_dir = 
+		temp_dir =
 			os.path.join(
 				RESULTS_DIR, "tmp"
 		)
 	shell:
 		"""
 		# Make, sort and compress tagAlign file from fragment file
-		export BUFFER_SIZE=$(awk -v mem_mb={resources.mem_mb} -v threads={threads} 'BEGIN {{ result = mem_mb/threads/2; print int(result) }}')
+		export BUFFER_SIZE=$(awk -v mem_mb={resources.mem_mb} -v threads={threads} 'BEGIN {{ result = mem_mb/threads/2; print int(result) "M" }}')
+		mkdir -p {resources.temp_dir}
+		SPLIT_DIR=$(mktemp -d -p {resources.temp_dir} bedSplitSort.XXXXXX)
 
-		LC_ALL=C
 		zcat {input.frag_file} | \
 			awk -v OFS='\t' '{{mid=int(($2+$3)/2); print $1,$2,mid,"N",1000,"+"; print $1,mid+1,$3,"N",1000,"-"}}' | \
-			sort -k 1,1V -k 2,2n -k3,3n --parallel {threads} -T {resources.temp_dir} -S $BUFFER_SIZE | \
-		bgzip -c > {output.tagAlign_sort_file}  
+			bash {params.bedSplitSort} \
+				-i /dev/stdin \
+				-g {params.chrSizes} \
+				-t "$SPLIT_DIR" \
+				-p {threads} \
+				-s "$BUFFER_SIZE" \
+				-T {resources.temp_dir} | \
+			bgzip -c > {output.tagAlign_sort_file}
 
 		# Index the tagAlign file
 		tabix -p bed {output.tagAlign_sort_file}
@@ -103,7 +120,7 @@ rule frag_to_bigWig:
 	shell:
 		"""
 			LC_ALL=C
-			export BUFFER_SIZE=$(awk -v mem_mb={resources.mem_mb} -v threads={threads} 'BEGIN {{ result = mem_mb/threads/2; print int(result) }}')
+			export BUFFER_SIZE=$(awk -v mem_mb={resources.mem_mb} -v threads={threads} 'BEGIN {{ result = mem_mb/threads/2; print int(result) "M" }}')
 			zcat {input.frag_file} | \
 				bedtools genomecov -bg -i stdin -g {params.chrSizes} | \
 				sort -k1,1 -k2,2n --parallel={threads} -S $BUFFER_SIZE -T {resources.temp_dir} > {output.bedGraph_file}
@@ -129,7 +146,7 @@ rule frag_to_norm_bigWig:
 	shell:
 		"""
 			LC_ALL=C
-			export BUFFER_SIZE=$(awk -v mem_mb={resources.mem_mb} -v threads={threads} 'BEGIN {{ result = mem_mb/threads/2; print int(result) }}')
+			export BUFFER_SIZE=$(awk -v mem_mb={resources.mem_mb} -v threads={threads} 'BEGIN {{ result = mem_mb/threads/2; print int(result) "M" }}')
 			frag_count=$(<{input.fragment_count})
 			scale_factor=$(awk "BEGIN {{print 1000000 / $frag_count}}")
 
