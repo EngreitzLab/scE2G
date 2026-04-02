@@ -43,6 +43,9 @@ fi
 
 mkdir -p "$SPLITDIR"
 
+## Clean up
+trap 'rm -r "$SPLITDIR"' EXIT
+
 ## Determine sort command: prefer sort-bed if available, fall back to GNU sort
 if command -v sort-bed &>/dev/null; then
     sort_chr() {
@@ -86,6 +89,3 @@ while read -r chr size; do
         sort_chr "$SPLITDIR/${chr}.bed"
     fi
 done < "$SIZES"
-
-## Clean up
-rm -r "$SPLITDIR"
