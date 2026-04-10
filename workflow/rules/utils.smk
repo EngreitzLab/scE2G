@@ -83,6 +83,8 @@ def get_e2g_config(config, encode_re2g_dir):
 		e2g_config["regions_blocklist"] = config["regions_blocklist"]
 	if "macs2_genomesize" in config:
 		e2g_config["macs2_genomesize"] = config["macs2_genomesize"]
+	if "gene_classes" in config:
+		e2g_config["gene_classes"] = config["gene_classes]
 	
 	return e2g_config
 
