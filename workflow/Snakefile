@@ -71,6 +71,11 @@ BIOSAMPLE_DF = encode_e2g.ABC.enable_retry(
 )
 BIOSAMPLE_DF = encode_e2g.expand_biosample_df(BIOSAMPLE_DF)
 
+## Resolve output ambiguity: scE2G bigWig rules and ENCODE_rE2G's write_accessibility_bw_file
+## both produce IGV_DIR/{biosample}/{id}.bw — prefer the scE2G rules
+ruleorder: frag_to_norm_bigWig > write_accessibility_bw_file
+ruleorder: frag_to_bigWig > write_accessibility_bw_file
+
 ## Include additional Snakemake rules
 include: os.path.join("rules", "frag_to_tagAlign.smk")
 include: os.path.join("rules", "make_kendall_pairs.smk")
