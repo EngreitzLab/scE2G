@@ -3,7 +3,6 @@
 
 # Load required packages
 suppressPackageStartupMessages({
-  library(genomation)
   library(GenomicRanges)
   library(data.table)
 })
@@ -14,13 +13,18 @@ allPutative_path = snakemake@input[["allPutative"]]
 kendallPairs_path = snakemake@output[["kendallPairs"]]
 
 
-# Read the narrowPeak
-bed.narrowPeak = readGeneric(narrowPeak_path)
+# Read the narrowPeak (only chr/start/end are used downstream)
+bed.narrowPeak = makeGRangesFromDataFrame(
+  fread(narrowPeak_path, select = 1:3, col.names = c("chr","start","end")),
+  starts.in.df.are.0based = TRUE)
 
-# Read the Enhancer-Gene pairs in ABC prediction
-bed.allPutative = readGeneric(allPutative_path,
-                              keep.all.metadata = T,
-                              header = T)
+# Read the Enhancer-Gene pairs in ABC prediction.
+# Only chr/start/end (for findOverlaps) and TargetGene (assigned to
+# output pairs) are used; skip the ~20 other ABC columns.
+bed.allPutative = makeGRangesFromDataFrame(
+  fread(allPutative_path, select = c("chr","start","end","TargetGene")),
+  keep.extra.columns = TRUE,
+  starts.in.df.are.0based = TRUE)
 
 # Find overlaps between narrowPeak and enhancers in ABC prediction
 overlaps.res = findOverlaps(bed.narrowPeak,
@@ -30,10 +34,12 @@ overlaps.res = findOverlaps(bed.narrowPeak,
 pairs.e2g = bed.narrowPeak[overlaps.res@from]
 mcols(pairs.e2g)[,"TargetGene"] = mcols(bed.allPutative)[overlaps.res@to,"TargetGene"]
 
-# Generate peak name
-mcols(pairs.e2g)[,"PeakName"] = 
+# Generate peak name. GRanges starts are 1-based inclusive; subtract 1
+# so PeakName uses the original 0-based BED start (matches ATAC matrix
+# rownames written by generate_atac_matrix.R).
+mcols(pairs.e2g)[,"PeakName"] =
   paste(seqnames(pairs.e2g),
-        start(pairs.e2g),
+        start(pairs.e2g) - 1L,
         end(pairs.e2g),
         sep = "-")
 
@@ -57,13 +63,17 @@ df.pairs.e2g =
                               "PairName")]
 
 # Rename the columns for clarity
-colnames(df.pairs.e2g) = 
+colnames(df.pairs.e2g) =
   c("chr",
     "start",
     "end",
     "TargetGene",
     "PeakName",
     "PairName")
+
+# GRanges starts are 1-based inclusive; subtract 1 to restore the
+# 0-based BED convention of the input narrowPeak/AllPutative files.
+df.pairs.e2g$start = df.pairs.e2g$start - 1L
 
 # Write the enhancer-gene pairs to a file
 fwrite(df.pairs.e2g,
