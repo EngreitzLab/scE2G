@@ -2,8 +2,8 @@
 
 # Load required packages
 suppressPackageStartupMessages({
-  library(genomation)
   library(GenomicRanges)
+  library(data.table)
   library(Signac)
   library(anndata)
   library(tools)
@@ -19,10 +19,13 @@ atac_matrix_path = snakemake@output[["atac_matrix_path"]]
 
 max_cell_count = snakemake@params[["max_cell_count"]]
 
-# Read the enhancer-gene pairs and extract unique peaks
-pairs.e2g = readGeneric(kendall_pairs_path,
-                        keep.all.metadata = T,
-                        header = T)
+# Read the enhancer-gene pairs and extract unique peaks.
+# Only chr/start/end (for FeatureMatrix) and PeakName (for dedup and
+# row naming) are used; skip TargetGene and PairName.
+pairs.e2g = makeGRangesFromDataFrame(
+  fread(kendall_pairs_path, select = c("chr","start","end","PeakName")),
+  keep.extra.columns = TRUE,
+  starts.in.df.are.0based = TRUE)
 bed.peaks = pairs.e2g[!duplicated(mcols(pairs.e2g)[,"PeakName"])]
 mcols(bed.peaks) = NULL
 
@@ -76,6 +79,15 @@ atac.matrix <- FeatureMatrix(
   features = bed.peaks,
   cells = cells.use
 )
+# Signac::FeatureMatrix names rows via GRangesToString (1-based start).
+# Rewrite rownames using the 0-based BED start so they match the
+# PeakName column in Pairs.Kendall.tsv.gz, which compute_kendall.R
+# uses to subset the matrix. FeatureMatrix preserves the order of
+# the input `features`, so this is a positional rename.
+rownames(atac.matrix) <- paste(seqnames(bed.peaks),
+                               start(bed.peaks) - 1L,
+                               end(bed.peaks),
+                               sep = "-")
 message("Example cell in ATAC matrix: ", colnames(atac.matrix)[1])
 
 
