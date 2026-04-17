@@ -62,7 +62,7 @@ module encode_e2g:
 config = update_scE2G_config(config, encode_e2g_config, config["encode_re2g_dir"])
 
 ## Include Snakemake rules from ENCODE_rE2G
-use rule * from encode_e2g exclude generate_e2g_predictions, format_external_features_config, get_stats, generate_plots, all
+use rule * from encode_e2g exclude generate_e2g_predictions, format_external_features_config, get_stats, generate_plots, all, write_accessibility_bw_file
 
 # expand biosamples config
 BIOSAMPLE_DF = encode_e2g.ABC.enable_retry(
