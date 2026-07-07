@@ -16,12 +16,15 @@ include: os.path.join("rules", "utils.smk")
 include: os.path.join("rules", "utils_training.smk")
 
 
+## Resolve scE2G's own directory from the currently-parsed Snakefile 
+WORKFLOW_DIR = os.path.dirname(str(workflow.current_basedir))
+
 ## Update paths in the config to be compatible with github submodules
 # Need to manually make results_dir an absolute path since above may
 # not work if results_dir folder isn't created
 # If results_dir is already an absolute path, this is a no-op
-config = make_paths_absolute(config, os.getcwd())
-config["results_dir"] = os.path.join(os.getcwd(), config["results_dir"])
+config = make_paths_absolute(config, WORKFLOW_DIR)
+config["results_dir"] = os.path.join(WORKFLOW_DIR, config["results_dir"])
 
 
 ## Define global variables
