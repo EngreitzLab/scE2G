@@ -10,7 +10,6 @@ dependencies:
   - ucsc-bedgraphtobigwig
   - click
   - csvtk
-  - jq
   - numpy
   - pandas
   - python>=3.6
