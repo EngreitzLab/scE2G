@@ -32,6 +32,11 @@ jobs:
           command: |
             mamba env create -f workflow/envs/run_snakemake.yml
       - run:
+          name: Build rule conda envs (sc_e2g, encode_re2g, abcenv)
+          no_output_timeout: 30m
+          command: |
+            conda run -n run_snakemake snakemake -j1 --use-conda --conda-create-envs-only --configfile tests/config/test_config.yml
+      - run:
           name: Run tests
           no_output_timeout: 45m
           command: |
