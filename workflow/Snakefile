@@ -12,12 +12,15 @@ MAX_MEM_MB = config["max_memory_allocation_mb"]
 include: os.path.join("rules", "utils.smk")
 
 
+## Resolve scE2G's own directory from the currently-parsed Snakefile
+WORKFLOW_DIR = os.path.dirname(str(workflow.current_basedir))
+
 ## Update paths in the config to be compatible with github submodules
 # Need to manually make results_dir an absolute path since above may
 # not work if results_dir folder isn't created
 # If results_dir is already an absolute path, this is a no-op
-config = make_paths_absolute(config, os.getcwd())
-config["results_dir"] = os.path.join(os.getcwd(), config["results_dir"])
+config = make_paths_absolute(config, WORKFLOW_DIR)
+config["results_dir"] = os.path.join(WORKFLOW_DIR, config["results_dir"])
 
 ## Define global variables
 if "IGV_dir" in config:
@@ -32,10 +35,9 @@ if "fragments_preprocessed" not in config:
 if "RNA_matrix_filtered" not in config:
 	config["RNA_matrix_filtered"] = True
 
-RESULTS_DIR = config["results_dir"] 
-SCRIPTS_DIR = os.path.join(os.getcwd(), "workflow", "scripts")
+RESULTS_DIR = config["results_dir"]
+SCRIPTS_DIR = os.path.join(WORKFLOW_DIR, "workflow", "scripts")
 CELL_CLUSTER_DF = pd.read_table(config["cell_clusters"]).set_index("cluster", drop=False)
-WORKFLOW_DIR = os.getcwd()
 
 ## Convert cell cluster config to a biosample config for the ABC pipeline
 ## Treat each cell cluster as a distinct biosample
