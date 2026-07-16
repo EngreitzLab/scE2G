@@ -4,152 +4,110 @@
 suppressPackageStartupMessages({
   library(GenomicRanges)
   library(genomation)
-  library(foreach)
   library(Signac)
   library(Seurat)
-  library(Rcpp)
   library(data.table)
   library(Matrix)
   library(anndata)
   library(tools)
   library(dplyr)
   library(tibble)
-  library(doParallel)
 })
 
 options(scipen = 999)
 
 ## Define functions --------------------------------------------------------------------------------
 
-# Compute Kendall correlation between a single gene and multiple enhancers
-kendall_one_gene = function(x, y.matrix){
-  # Calculate the difference between concordant and disconcordant pairs from a sorted logical matrix
-  # Refer to step 2 and 3 in Fig. S1 of Sheth, Qiu et al. 2025
-  cppFunction('
-NumericVector count_diff(LogicalMatrix y_matrix_sorted) {
-    int n = y_matrix_sorted.nrow();
-    int m = y_matrix_sorted.ncol();
-    NumericVector result(m);
-    for (int j = 0; j < m; j++) {
-        long long concordant = 0;
-        long long disconcordant = 0;
-        long long cumsum = 0;
-        for (int i = 0; i < n; i++) { // i + 1 corresponds to rank k because y_matrix_sorted is sorted
-            bool accessibility = y_matrix_sorted(i, j);
-            cumsum += accessibility;
-            if (accessibility) {
-                // If accessibility is 1, increase discordant by (Rank - CumulativeSum)
-                disconcordant += (i + 1 - cumsum);
-            } else {
-                // If accessibility is 0, increase concordant by CumulativeSum
-                concordant += cumsum;
-            }
-        }
-        result[j] = static_cast<double>(concordant - disconcordant);
-    }
-    return result;
-}
-')
-  
-  # Sort x in decreasing order and accordingly sort y.matrix
-  # Step 1 in Fig. S1 of Sheth, Qiu et al. 2025
-  ord = order(x, 
-              decreasing = T)
-  x.sorted = x[ord]
-  y.matrix.sorted = 
-    y.matrix[ord, ,drop = F]
-  
-  # Calculate initial differences between concordant and disconcordant pairs
-  # Step 2 and 3 in Fig. S1 of Sheth, Qiu et al. 2025
-  n.diff_all = count_diff(as.matrix(y.matrix.sorted))
-
-  # Step 4 in Fig. S1 of Sheth, Qiu et al. 2025
-  # Calculate differences for ties in x
-  n.diff_ties = rep(0, ncol(y.matrix)) 	
-  x.ties = unique(x.sorted[duplicated(x.sorted)])  
-  for (x.tie in x.ties) {
-    # Calculate differences for each group of cells with equal gene expression x.tie 
-    n.diff = count_diff(as.matrix(y.matrix.sorted[x.sorted == x.tie, ,drop = F]))
-
-    # Take the sum of differences for all groups
-    n.diff_ties = 
-      n.diff_ties + n.diff      
-  }
-  
-  # Calculate Kendall's tau-b coefficient
-  n = length(x) # Number of cells
-  n0 = choose(n, 2) # (n * (n - 1)) / 2
-	
-  tx = table(x) # Create a frequency table for gene expression data 'x'
-	        # If frequency = 1, there are no ties
-                # If frequency > 1, there are ties
-  n1 = sum(choose(tx, 2)) # Calculate the sum of combinations of choosing 2 from each frequency
-
-  s = colSums(y.matrix) # Calculate the number of cells with an open state for each peak
-  n2 = s*(s-1)/2 + (n-s)*(n-s-1)/2 # Calculate the sum of combinations of choosing 2 for: 
-	                           # open state: s*(s-1)/2
-	                           # closed state: (n-s)*(n-s-1)/2
-	                           # for each peak
-  
-  tau_b = (n.diff_all - n.diff_ties) / sqrt((n0 - n1) * (n0 - n2))
-  
-  return(tau_b)
-}
-
-
-# Compute Kendall correlation between a mutliple genes and multiple enhancers
-kendall_multiple_genes = function(bed.E2G,
+# Writes the (filtered) RNA/ATAC data to disk for the Python correlation step
+# and returns the paths, without holding on to anything the caller couldn't
+# already free. Split out from run_kendall_python() specifically so the
+# caller can rm() its own references to data.RNA/data.ATAC (potentially very
+# large, atlas-scale matrices) in between the two calls -- R passes arguments
+# by reference until modified, so rm()ing them *inside* a function would only
+# drop that function's local binding and free nothing, since the caller's
+# variables would still keep the underlying object alive. Without freeing
+# them here, R and the Python subprocess would both hold a full copy of the
+# same data at once during system2()'s call in run_kendall_python().
+prepare_kendall_inputs = function(bed.E2G,
                                   data.RNA,
                                   data.ATAC,
-                                  cores = 1,
                                   colname.gene_name = "gene_name",
-                                  colname.enhancer_name = "peak_name",
-                                  colname.output = "Kendall") {
-  
+                                  colname.enhancer_name = "peak_name") {
+
   # Filter E2G pairs based on presence in RNA and ATAC data
   bed.E2G.filter =
     bed.E2G[mcols(bed.E2G)[,colname.gene_name] %in% rownames(data.RNA) &
               mcols(bed.E2G)[,colname.enhancer_name] %in% rownames(data.ATAC)]
-  
-  # Check if parallel processing should be enabled based on the cores parameter 
-  if (cores > 1) {
-    # Start parallel cluster
-    cl <- makeCluster(cores)
-    registerDoParallel(cl)
-    
-    # Compute Kendall correlation for each gene
-    bed.E2G.output <- foreach(gene.name = unique(mcols(bed.E2G.filter)[,colname.gene_name]),
-                              .combine = 'c',
-                              .packages = c("GenomicRanges", "Matrix", "Rcpp"),
-			      .export = c("kendall_one_gene")) %dopar% {
-                                # select enhancer-gene pairs for one gene
-                                bed.E2G.tmp <- bed.E2G.filter[mcols(bed.E2G.filter)[,colname.gene_name] == gene.name]
-                                
-                                # compute Kendall correlation for one gene
-                                mcols(bed.E2G.tmp)[, colname.output] =
-                                  kendall_one_gene(as.numeric(data.RNA[gene.name, ]),
-                                                   t(data.ATAC[mcols(bed.E2G.tmp)[,colname.enhancer_name], , drop = F]))
-                                bed.E2G.tmp
-                              }
-    
-    stopCluster(cl)
-  } else {
-    # Compute Kendall correlation for each gene
-    bed.E2G.output <- foreach(gene.name = unique(mcols(bed.E2G.filter)[,colname.gene_name]),
-                              .combine = 'c',
-                              .packages = c("GenomicRanges")) %do% {
-                                # select enhancer-gene pairs for one gene
-                                bed.E2G.tmp <- bed.E2G.filter[mcols(bed.E2G.filter)[,colname.gene_name] == gene.name]
-                                
-                                # compute Kendall correlation for one gene
-                                mcols(bed.E2G.tmp)[, colname.output] =
-                                  kendall_one_gene(as.numeric(data.RNA[gene.name, ]),
-                                                   t(data.ATAC[mcols(bed.E2G.tmp)[,colname.enhancer_name], , drop = F]))
-                                bed.E2G.tmp
-                              }
+
+  tmp_dir = tempfile("kendall_")
+  dir.create(tmp_dir)
+
+  rna_mtx_path = file.path(tmp_dir, "rna_matrix.mtx")
+  atac_mtx_path = file.path(tmp_dir, "atac_matrix.mtx")
+  rna_genes_path = file.path(tmp_dir, "rna_genes.txt")
+  atac_peaks_path = file.path(tmp_dir, "atac_peaks.txt")
+  pairs_path = file.path(tmp_dir, "pairs.tsv")
+
+  writeMM(data.RNA, rna_mtx_path)
+  writeMM(data.ATAC, atac_mtx_path)
+  writeLines(rownames(data.RNA), rna_genes_path)
+  writeLines(rownames(data.ATAC), atac_peaks_path)
+  fwrite(
+    data.frame(
+      TargetGene = mcols(bed.E2G.filter)[, colname.gene_name],
+      PeakName = mcols(bed.E2G.filter)[, colname.enhancer_name]
+    ),
+    file = pairs_path, sep = "\t", col.names = FALSE, quote = FALSE
+  )
+
+  list(
+    bed.E2G.filter = bed.E2G.filter,
+    tmp_dir = tmp_dir,
+    rna_mtx_path = rna_mtx_path,
+    atac_mtx_path = atac_mtx_path,
+    rna_genes_path = rna_genes_path,
+    atac_peaks_path = atac_peaks_path,
+    pairs_path = pairs_path
+  )
+}
+
+# Invokes the Python correlation script (backed by the fast_kendall_sc Rust
+# package) against inputs already written by prepare_kendall_inputs(), and
+# reads the results back onto the filtered pairs. This is the ~7-hour
+# bottleneck in the old pure-R implementation, now delegated to Python.
+run_kendall_python = function(prepared, cores = 1, colname.output = "Kendall", python_script_path) {
+  on.exit(unlink(prepared$tmp_dir, recursive = TRUE), add = TRUE)
+
+  results_path = file.path(prepared$tmp_dir, "kendall_results.txt")
+
+  exit_code = system2(
+    "python",
+    args = c(
+      shQuote(python_script_path),
+      "--rna-mtx", shQuote(prepared$rna_mtx_path),
+      "--rna-genes", shQuote(prepared$rna_genes_path),
+      "--atac-mtx", shQuote(prepared$atac_mtx_path),
+      "--atac-peaks", shQuote(prepared$atac_peaks_path),
+      "--pairs", shQuote(prepared$pairs_path),
+      "--out", shQuote(results_path),
+      "--threads", cores
+    )
+  )
+  if (exit_code != 0) {
+    stop("compute_kendall.py failed with exit code ", exit_code)
   }
-  
-  return(bed.E2G.output)
+
+  bed.E2G.filter = prepared$bed.E2G.filter
+  kendall_values = as.numeric(readLines(results_path))
+  if (length(kendall_values) != length(bed.E2G.filter)) {
+    stop(
+      "Expected ", length(bed.E2G.filter), " Kendall values from compute_kendall.py, got ",
+      length(kendall_values)
+    )
+  }
+  mcols(bed.E2G.filter)[, colname.output] = kendall_values
+
+  return(bed.E2G.filter)
 }
 
 # helper function to parse GTF
@@ -207,6 +165,7 @@ atac_matrix_path = snakemake@input$atac_matrix
 rna_matrix_path = snakemake@input$rna_matrix
 gene_gtf_path = snakemake@params$gene_gtf
 abc_genes_path = snakemake@params$abc_genes
+python_script_path = snakemake@params$python_script
 kendall_predictions_path = snakemake@output$kendall_predictions
 umi_count_path = snakemake@output$umi_count
 cell_count_path = snakemake@output$cell_count
@@ -274,14 +233,22 @@ fwrite(df.exp_filt.to_save,
        quote = F,
        sep = "\t")
 
-# Compute Kendall correlation
-pairs.E2G = kendall_multiple_genes(pairs.E2G,
-                                   matrix.rna_filt,
-                                   matrix.atac,
-				   cores = cores,
-                                   colname.gene_name = "TargetGene",
-                                   colname.enhancer_name = "PeakName",
-                                   colname.output = "Kendall")
+# Compute Kendall correlation: write inputs, then free R's (potentially very
+# large, atlas-scale) copies before starting the Python subprocess, so the R
+# and Python processes don't both need the full matrices in memory at once.
+kendall_inputs = prepare_kendall_inputs(pairs.E2G,
+                                        matrix.rna_filt,
+                                        matrix.atac,
+                                        colname.gene_name = "TargetGene",
+                                        colname.enhancer_name = "PeakName")
+
+rm(matrix.rna, matrix.rna_count, matrix.rna_filt, matrix.atac)
+gc()
+
+pairs.E2G = run_kendall_python(kendall_inputs,
+                               cores = cores,
+                               colname.output = "Kendall",
+                               python_script_path = python_script_path)
 
 # add gene expression metrics to E2G pairs
 mcols(pairs.E2G)[,c("mean_log_normalized_rna",

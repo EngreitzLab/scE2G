@@ -18,6 +18,10 @@ dependencies:
   - scikit-learn=1.2.1  # Must match with ENCODE-rE2G version
   - scipy
   - wget
+  - pip
+  - rust  # provides cargo, needed to build fast_kendall_sc's Rust extension via maturin
+  - pip:
+    - fast_kendall_sc @ git+https://github.com/EngreitzLab/fast_kendall_sc.git@v1.0.0
   - r-base
   - r-r.utils
   - r-data.table
