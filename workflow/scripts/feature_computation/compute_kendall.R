@@ -2,8 +2,6 @@
 
 # Load required packages
 suppressPackageStartupMessages({
-  library(GenomicRanges)
-  library(genomation)
   library(Signac)
   library(Seurat)
   library(data.table)
@@ -36,8 +34,8 @@ prepare_kendall_inputs = function(bed.E2G,
 
   # Filter E2G pairs based on presence in RNA and ATAC data
   bed.E2G.filter =
-    bed.E2G[mcols(bed.E2G)[,colname.gene_name] %in% rownames(data.RNA) &
-              mcols(bed.E2G)[,colname.enhancer_name] %in% rownames(data.ATAC)]
+    bed.E2G[bed.E2G[[colname.gene_name]] %in% rownames(data.RNA) &
+              bed.E2G[[colname.enhancer_name]] %in% rownames(data.ATAC)]
 
   tmp_dir = tempfile("kendall_")
   dir.create(tmp_dir)
@@ -54,8 +52,8 @@ prepare_kendall_inputs = function(bed.E2G,
   writeLines(rownames(data.ATAC), atac_peaks_path)
   fwrite(
     data.frame(
-      TargetGene = mcols(bed.E2G.filter)[, colname.gene_name],
-      PeakName = mcols(bed.E2G.filter)[, colname.enhancer_name]
+      TargetGene = bed.E2G.filter[[colname.gene_name]],
+      PeakName = bed.E2G.filter[[colname.enhancer_name]]
     ),
     file = pairs_path, sep = "\t", col.names = FALSE, quote = FALSE
   )
@@ -99,13 +97,13 @@ run_kendall_python = function(prepared, cores = 1, colname.output = "Kendall", p
 
   bed.E2G.filter = prepared$bed.E2G.filter
   kendall_values = as.numeric(readLines(results_path))
-  if (length(kendall_values) != length(bed.E2G.filter)) {
+  if (length(kendall_values) != nrow(bed.E2G.filter)) {
     stop(
-      "Expected ", length(bed.E2G.filter), " Kendall values from compute_kendall.py, got ",
+      "Expected ", nrow(bed.E2G.filter), " Kendall values from compute_kendall.py, got ",
       length(kendall_values)
     )
   }
-  mcols(bed.E2G.filter)[, colname.output] = kendall_values
+  bed.E2G.filter[[colname.output]] = kendall_values
 
   return(bed.E2G.filter)
 }
@@ -173,10 +171,10 @@ gex_out_path = snakemake@output$all_gex
 
 cores = as.integer(snakemake@threads)
 
-# Load candidate E-G pairs
-pairs.E2G = readGeneric(kendall_pairs_path,
-                        keep.all.metadata = T,
-                        header = T)
+# Load candidate E-G pairs. fread reads the file literally (no BED-style
+# coordinate shift), so chr/start/end round-trip exactly as written by
+# make_kendall_pairs; downstream code treats pairs.E2G as a data.table.
+pairs.E2G = fread(kendall_pairs_path, header = TRUE)
 
 # Load scATAC matrix
 matrix.atac_count = readRDS(atac_matrix_path)
@@ -250,35 +248,25 @@ pairs.E2G = run_kendall_python(kendall_inputs,
                                colname.output = "Kendall",
                                python_script_path = python_script_path)
 
-# add gene expression metrics to E2G pairs
-mcols(pairs.E2G)[,c("mean_log_normalized_rna",
-                    "RnaDetectedPercent",
-                    "RnaPseudobulkTPM")] = 
-  df.exp_filt[pairs.E2G$TargetGene,]
+# add gene expression metrics to E2G pairs (row-matched by TargetGene)
+gex_cols = c("mean_log_normalized_rna",
+             "RnaDetectedPercent",
+             "RnaPseudobulkTPM")
+pairs.E2G[, (gex_cols) := df.exp_filt[pairs.E2G$TargetGene, gex_cols]]
 
-# Write output to file
-df.pairs.E2G = 
-  as.data.frame(pairs.E2G)[,c("seqnames",
-                              "start",
-                              "end",
-                              "TargetGene",
-                              "PeakName",
-                              "PairName",
-                              "mean_log_normalized_rna",
-                              "RnaDetectedPercent",
-                              "RnaPseudobulkTPM",
-                              "Kendall")]
-colnames(df.pairs.E2G) = 
-  c("chr",
-    "start",
-    "end",
-    "TargetGene",
-    "PeakName",
-    "PairName",
-    "mean_log_normalized_rna",
-    "RnaDetectedPercent",
-    "RnaPseudobulkTPM",
-    "Kendall")
+# Write output to file. Columns are already named chr/start/end (no seqnames
+# rename needed, unlike the old GRanges as.data.frame() path).
+out_cols = c("chr",
+             "start",
+             "end",
+             "TargetGene",
+             "PeakName",
+             "PairName",
+             "mean_log_normalized_rna",
+             "RnaDetectedPercent",
+             "RnaPseudobulkTPM",
+             "Kendall")
+df.pairs.E2G = pairs.E2G[, ..out_cols]
 fwrite(df.pairs.E2G,
        file = kendall_predictions_path,
        row.names = F,
