@@ -197,6 +197,13 @@ if (file_ext(rna_matrix_path) %in% c("h5ad", "h5")) {
 
 matrix.rna_count = matrix.rna_count[,colnames(matrix.atac)]
 
+# read_h5ad() returns a row-major dgRMatrix. NormalizeData (and other column-wise
+# ops downstream) iterate over cells/columns, which is O(nnz) per column on
+# row-major storage -- ~2.8h on this 20k-gene x 5.3k-cell matrix. Coerce to
+# column-major (dgCMatrix) once so those ops are fast (NormalizeData: ~2.8h -> ~1s).
+# No-op for the read.csv / Read10X paths, which are already dgCMatrix.
+matrix.rna_count = as(matrix.rna_count, "CsparseMatrix")
+
 # save number of UMIs (pre-filtering) and cells
 n_umi = sum(matrix.rna_count)
 write(n_umi, file = umi_count_path)
