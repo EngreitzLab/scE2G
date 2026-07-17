@@ -175,6 +175,21 @@ snakemake -j1 --use-conda --configfile config/config.yaml
 
 > **Note:** First run may take time to build conda environments, usually around 30-40 minutes according to CircleCI tests. If it exceeds 1 hour, ensure you're using mamba and have sufficient memory.
 
+> **Tip (SLURM / HPC clusters):** Conda env builds are dominated by
+> many-small-file I/O, so they are far faster on node-local SSD than on a
+> shared parallel filesystem (e.g. Lustre `$SCRATCH`/`$OAK`). On a compute
+> node, point `--conda-prefix` at node-local scratch — on Stanford Sherlock
+> that's `$L_SCRATCH`:
+> ```bash
+> export CONDA_PKGS_DIRS="$L_SCRATCH/conda_pkgs"   # keep the pkg cache off $HOME too
+> snakemake -j1 --use-conda --conda-prefix "$L_SCRATCH/conda_envs" \
+>   --configfile config/config.yaml
+> ```
+> In our testing this cut the full env build (including the R stack) from
+> >2 h on Lustre to ~10–15 min. Node-local scratch is wiped when the job
+> ends, so envs rebuild each run — keep the env build and the pipeline run
+> in the **same** job.
+
 ### Output
 
 #### Key outputs
