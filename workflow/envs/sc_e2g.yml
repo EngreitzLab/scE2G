@@ -12,6 +12,7 @@ dependencies:
   - csvtk
   - numpy
   - pandas
+  - anndata  # python anndata: reticulate backend for r-anndata's read_h5ad() (keeps the env self-contained -- no external RETICULATE_PYTHON)
   - python>=3.6
   - pigz
   - snakemake>=7.0
