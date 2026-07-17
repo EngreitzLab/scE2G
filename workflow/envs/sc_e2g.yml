@@ -19,7 +19,7 @@ dependencies:
   - scipy
   - wget
   - pip
-  - rust  # provides cargo, needed to build fast_kendall_sc's Rust extension via maturin
+  - rust>=1.78  # cargo>=1.78 required for fast_kendall_sc's Cargo.lock v4 (via maturin)
   - pip:
     - fast_kendall_sc @ git+https://github.com/EngreitzLab/fast_kendall_sc.git@v1.0.0
   - r-base
