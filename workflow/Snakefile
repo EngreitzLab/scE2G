@@ -71,6 +71,13 @@ BIOSAMPLE_DF = ABC.enable_retry(
 )
 BIOSAMPLE_DF = expand_biosample_df(BIOSAMPLE_DF)
 
+# Compute feature requirements upfront by reading model feature tables
+# This replaces the checkpoint-based feature detection
+(BIOSAMPLE_NEEDS_ARC,
+ BIOSAMPLE_NEEDS_NUMCANDIDATEENHGENE,
+ BIOSAMPLE_NEEDS_NUMTSSENHGENE,
+ BIOSAMPLE_NEEDS_NEARBYENHANCERS) = compute_biosample_feature_requirements(BIOSAMPLE_DF)
+
 # Define ABC_BIOSAMPLES_DIR mapping (each biosample's ABC output directory)
 ABC_BIOSAMPLES_DIR = {biosample: os.path.join(RESULTS_DIR, biosample) for biosample in BIOSAMPLE_DF["biosample"]}
 

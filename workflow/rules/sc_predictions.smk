@@ -70,12 +70,10 @@ rule run_e2g_qnorm:
 			--output_file {output.prediction_file}
 		"""
 def get_gex_file(wildcards):
-	with checkpoints.features_required.get(sample=wildcards.cluster).output.to_generate.open() as f:
-		val = f.read().strip()
-		if val == "Kendall" or val == "ARC":
-			return os.path.join(RESULTS_DIR, wildcards.cluster, "Kendall", "gene_expression_metrics.tsv.gz")
-		else:
-			return RESULTS_DIR
+	"""Return gene expression file path if ARC/Kendall features are needed."""
+	if BIOSAMPLE_NEEDS_ARC.get(wildcards.cluster, False):
+		return os.path.join(RESULTS_DIR, wildcards.cluster, "Kendall", "gene_expression_metrics.tsv.gz")
+	return RESULTS_DIR
 
 rule element_and_gene_summaries:
 	input:
@@ -96,12 +94,10 @@ rule element_and_gene_summaries:
 		"../scripts/prediction_qc/generate_element_gene_lists.R"
 
 def get_count_file(wildcards, metric):
-	with checkpoints.features_required.get(sample=wildcards.cluster).output.to_generate.open() as f:
-		val = f.read().strip()
-		if val == "Kendall" or val == "ARC":
-			return os.path.join(RESULTS_DIR, wildcards.cluster, f"{metric}.txt")
-		else:
-			return RESULTS_DIR
+	"""Return count file path if ARC/Kendall features are needed."""
+	if BIOSAMPLE_NEEDS_ARC.get(wildcards.cluster, False):
+		return os.path.join(RESULTS_DIR, wildcards.cluster, f"{metric}.txt")
+	return RESULTS_DIR
 
 rule get_stats_per_model_per_cluster:
 	input:

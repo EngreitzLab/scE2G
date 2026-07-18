@@ -254,6 +254,47 @@ def get_abc_score_col(cluster):
 		return "powerlaw.Score"
 	else:
 		return "ABC.Score"
-		
 
+
+## Upfront feature requirement evaluation (replaces checkpoints)
+
+def _read_model_feature_columns(model_dir):
+	"""Read feature table from model directory and return features in input_col and second_input."""
+	feature_table_path = os.path.join(model_dir, "feature_table.tsv")
+	features = set()
+	with open(feature_table_path, "r") as f:
+		next(f)  # skip header
+		for line in f:
+			columns = line.strip().split("\t")
+			if len(columns) >= 2:
+				features.add(columns[1])  # input_col
+			if len(columns) >= 3 and columns[2] != "NA":
+				features.add(columns[2])  # second_input
+	return features
+
+
+def compute_biosample_feature_requirements(biosample_df):
+	"""Compute feature requirements for all biosamples at initialization time.
+
+	Replaces the checkpoint-based feature detection with upfront evaluation.
+	Reads model feature tables directly to determine which features are needed.
+	"""
+	needs_arc = {}
+	needs_numCandidateEnhGene = {}
+	needs_numTSSEnhGene = {}
+	needs_nearbyEnhancers = {}
+
+	for biosample in biosample_df["biosample"].unique():
+		model_dirs = biosample_df.loc[biosample_df["biosample"] == biosample, "model_dir"].tolist()
+
+		all_features = set()
+		for model_dir in model_dirs:
+			all_features.update(_read_model_feature_columns(model_dir))
+
+		needs_arc[biosample] = ("ARC.E2G.Score" in all_features) or ("Kendall" in all_features)
+		needs_numCandidateEnhGene[biosample] = "numCandidateEnhGene" in all_features
+		needs_numTSSEnhGene[biosample] = "numTSSEnhGene" in all_features
+		needs_nearbyEnhancers[biosample] = ("numNearbyEnhancers" in all_features) or ("sumNearbyEnhancers" in all_features)
+
+	return needs_arc, needs_numCandidateEnhGene, needs_numTSSEnhGene, needs_nearbyEnhancers
 

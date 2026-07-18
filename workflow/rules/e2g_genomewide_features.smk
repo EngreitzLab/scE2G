@@ -1,68 +1,31 @@
 from functools import partial
-		
-checkpoint basic_features_required: # (vs scE2G feature_required)
-	input:
-		feature_table_file = os.path.join(RESULTS_DIR, "{sample}", "feature_table.tsv")
-	output:
-		numCandidateEnhGene = os.path.join(RESULTS_DIR, "{sample}", "new_features", "generate_numCandidateEnhGene.txt"), # file with NumCandidateEnhGene, NumTSSEnhGene, NumEnhancersEGXkb, SumEnhancersEGXkb
-		numTSSEnhGene = os.path.join(RESULTS_DIR, "{sample}", "new_features", "generate_numTSSEnhGene.txt"),
-		nearbyEnhancers = os.path.join(RESULTS_DIR, "{sample}", "new_features", "generate_nearbyEnhancers.txt"),
-	run:
-		req_numCandidateEnhGene = "False"
-		req_numTSSEnhGene = "False"
-		req_nearbyEnhancers = "False"
-		with open(input.feature_table_file, "r") as f:
-			for line in f:
-				columns = line.strip().split("\t")
-				if (("numCandidateEnhGene" in columns[1]) or ("numCandidateEnhGene" in columns[2])):
-					req_numCandidateEnhGene = "True"
-				if (("numTSSEnhGene" in columns[1]) or ("numTSSEnhGene" in columns[2])):
-					req_numTSSEnhGene = "True"
-				if (("numNearbyEnhancers" in columns[1])or  ("numNearbyEnhancers" in columns[2])):
-					req_nearbyEnhancers = "True"
-				if (("sumNearbyEnhancers" in columns[1])or  ("sumNearbyEnhancers" in columns[2])):
-					req_nearbyEnhancers = "True"
 
-		with open(output.numCandidateEnhGene, "w") as out:
-			out.write(req_numCandidateEnhGene)
-		with open(output.numTSSEnhGene, "w") as out:
-			out.write(req_numTSSEnhGene)
-		with open(output.nearbyEnhancers, "w") as out:
-			out.write(req_nearbyEnhancers) 
+# Feature requirement detection via upfront configuration evaluation
+# (Replaces checkpoint basic_features_required)
 
-
-# return file paths for features to generate
 def get_numCandidateEnhGene_file(wildcards):
-	with checkpoints.basic_features_required.get(sample=wildcards.biosample).output.numCandidateEnhGene.open() as f:
-		val = f.read().strip()
-		if val == "True":
-			return os.path.join(RESULTS_DIR, wildcards.biosample, "new_features", "NumCandidateEnhGene.tsv")
-		else:
-			return RESULTS_DIR
+	"""Return feature file path if needed, otherwise RESULTS_DIR."""
+	if BIOSAMPLE_NEEDS_NUMCANDIDATEENHGENE.get(wildcards.biosample, False):
+		return os.path.join(RESULTS_DIR, wildcards.biosample, "new_features", "NumCandidateEnhGene.tsv")
+	return RESULTS_DIR
 
 def get_numTSSEnhGene_file(wildcards):
-	with checkpoints.basic_features_required.get(sample=wildcards.biosample).output.numTSSEnhGene.open() as f:
-		val = f.read().strip()
-		if val == "True":
-			return os.path.join(RESULTS_DIR, wildcards.biosample, "new_features", "NumTSSEnhGene.tsv")
-		else:
-			return RESULTS_DIR
+	"""Return feature file path if needed, otherwise RESULTS_DIR."""
+	if BIOSAMPLE_NEEDS_NUMTSSENHGENE.get(wildcards.biosample, False):
+		return os.path.join(RESULTS_DIR, wildcards.biosample, "new_features", "NumTSSEnhGene.tsv")
+	return RESULTS_DIR
 
 def get_numNearbyEnhancers_file(wildcards):
-	with checkpoints.basic_features_required.get(sample=wildcards.biosample).output.nearbyEnhancers.open() as f:
-		val = f.read().strip()
-		if val == "True":
-			return os.path.join(RESULTS_DIR, wildcards.biosample, "new_features", "NumEnhancersEG5kb.txt")
-		else:
-			return RESULTS_DIR
+	"""Return feature file path if needed, otherwise RESULTS_DIR."""
+	if BIOSAMPLE_NEEDS_NEARBYENHANCERS.get(wildcards.biosample, False):
+		return os.path.join(RESULTS_DIR, wildcards.biosample, "new_features", "NumEnhancersEG5kb.txt")
+	return RESULTS_DIR
 
 def get_sumNearbyEnhancers_file(wildcards):
-	with checkpoints.basic_features_required.get(sample=wildcards.biosample).output.nearbyEnhancers.open() as f:
-		val = f.read().strip()
-		if val == "True":
-			return os.path.join(RESULTS_DIR, wildcards.biosample, "new_features", "SumEnhancersEG5kb.txt")
-		else:
-			return RESULTS_DIR
+	"""Return feature file path if needed, otherwise RESULTS_DIR."""
+	if BIOSAMPLE_NEEDS_NEARBYENHANCERS.get(wildcards.biosample, False):
+		return os.path.join(RESULTS_DIR, wildcards.biosample, "new_features", "SumEnhancersEG5kb.txt")
+	return RESULTS_DIR
 
 # generate feature "numCandidateEnhGene"
 rule generate_num_candidate_enh_gene:

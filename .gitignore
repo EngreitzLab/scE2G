@@ -7,3 +7,5 @@ tests/test_output/
 workflow/scripts/mine/
 *.dot
 *.png
+*.sif
+scratch/
