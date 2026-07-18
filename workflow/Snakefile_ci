@@ -1,0 +1,172 @@
+from snakemake.utils import min_version
+min_version("7.0")
+
+import pandas as pd
+import numpy as np
+import os
+import yaml
+
+## CI workflow - computes confidence intervals on scE2G scores by cell subsampling
+## All subsample pipeline rules run directly in this DAG (no nested Snakemake calls).
+## Each subsample is treated as a pseudo-biosample named "{cluster}__sub{i}".
+
+CI_WORKFLOW_DIR = os.getcwd()
+CI_SCRIPTS_DIR = os.path.join(CI_WORKFLOW_DIR, "workflow", "scripts", "ci")
+
+## Resolve all output dirs to absolute paths (expandvars allows $VAR in config values)
+FULL_RUN_DIR = os.path.realpath(os.path.expandvars(config["full_run_results_dir"]))
+SCRATCH_DIR = os.path.realpath(os.path.expandvars(config["scratch_dir"]))
+CI_RESULTS_DIR = os.path.realpath(os.path.expandvars(config["results_dir"]))
+
+MODE = config.get("mode", "full")  # "full" (mode A) or "abc" (mode B)
+N_SUBSAMPLES = config.get("n_subsamples", 10)
+CLUSTERS = config["clusters"]
+MODEL = config["model"]
+
+## Load full run's saved configs
+_ref_config_dir = os.path.expandvars(config.get("reference_config_dir", os.path.join(FULL_RUN_DIR, "config")))
+full_run_sce2g_config_path = os.path.join(_ref_config_dir, "scE2G_config.yml")
+full_run_biosample_config_path = os.path.join(_ref_config_dir, "expanded_biosample_config.tsv")
+
+if not os.path.exists(full_run_sce2g_config_path):
+    raise FileNotFoundError(
+        f"scE2G config not found at {full_run_sce2g_config_path}. "
+        "Ensure full_run_results_dir points to a completed scE2G run."
+    )
+
+with open(full_run_sce2g_config_path, "r") as fh:
+    FULL_RUN_CONFIG = yaml.safe_load(fh)
+
+FULL_BIOSAMPLE_DF = pd.read_table(full_run_biosample_config_path)
+
+## FULL_RUN_CELL_CLUSTER_DF: original cluster info (fragment files for subsampling)
+FULL_RUN_CELL_CLUSTER_DF = pd.read_table(FULL_RUN_CONFIG["cell_clusters"]).set_index("cluster", drop=False)
+
+## Validate requested clusters and model
+for cluster in CLUSTERS:
+    if cluster not in FULL_BIOSAMPLE_DF["biosample"].values:
+        raise ValueError(f"Cluster '{cluster}' not found in full run. Available: {list(FULL_BIOSAMPLE_DF['biosample'].unique())}")
+    cluster_models = FULL_BIOSAMPLE_DF[FULL_BIOSAMPLE_DF["biosample"] == cluster]["model_dir_base"].values
+    if MODEL not in cluster_models:
+        raise ValueError(f"Model '{MODEL}' not found for cluster '{cluster}'. Available: {list(cluster_models)}")
+
+## Build per-cluster lookup filtered to the CI model
+CI_BIOSAMPLE_DF = FULL_BIOSAMPLE_DF[
+    (FULL_BIOSAMPLE_DF["biosample"].isin(CLUSTERS)) &
+    (FULL_BIOSAMPLE_DF["model_dir_base"] == MODEL)
+].copy().set_index("biosample", drop=False)
+
+SUBSAMPLE_INDICES = list(range(N_SUBSAMPLES))
+
+## Build CELL_CLUSTER_DF for all subsample pseudo-biosamples
+## Each entry "{cluster}__sub{i}" points to the subsampled fragment file
+ci_rows = []
+for cluster in CLUSTERS:
+    orig_row = FULL_RUN_CELL_CLUSTER_DF.loc[cluster].copy()
+    # Use model_dir from CI_BIOSAMPLE_DF (already filtered to CI model only)
+    model_dir = CI_BIOSAMPLE_DF.loc[cluster, "model_dir"]
+    for i in SUBSAMPLE_INDICES:
+        row = orig_row.copy()
+        row["cluster"] = f"{cluster}__sub{i}"
+        row["atac_frag_file"] = os.path.join(
+            SCRATCH_DIR, cluster, f"subsample_{i}", "atac_fragments.tsv.gz"
+        )
+        row["model_dir"] = model_dir
+        ci_rows.append(row)
+
+## Override CELL_CLUSTER_DF with subsample entries
+## (pipeline rules read CELL_CLUSTER_DF for fragment file paths)
+CELL_CLUSTER_DF = pd.DataFrame(ci_rows).set_index("cluster", drop=False)
+
+## Write CI cell_clusters TSV for make_biosample_config and external_features_config script
+os.makedirs(os.path.join(SCRATCH_DIR, "tmp"), exist_ok=True)
+_ci_cell_clusters_tsv = os.path.join(SCRATCH_DIR, "tmp", "ci_cell_clusters.tsv")
+_ci_abc_biosamples_tsv = os.path.join(SCRATCH_DIR, "tmp", "ci_abc_biosamples.tsv")
+CELL_CLUSTER_DF.reset_index(drop=True).to_csv(_ci_cell_clusters_tsv, sep="\t", index=False)
+
+## Build CI pipeline config by extending the full run's config
+ci_pipeline_config = dict(FULL_RUN_CONFIG)
+ci_pipeline_config["results_dir"] = SCRATCH_DIR
+ci_pipeline_config["cell_clusters"] = _ci_cell_clusters_tsv
+ci_pipeline_config["ABC_BIOSAMPLES"] = _ci_abc_biosamples_tsv
+ci_pipeline_config["fragments_preprocessed"] = True
+ci_pipeline_config["RNA_matrix_filtered"] = False
+ci_pipeline_config["make_IGV_tracks"] = False
+ci_pipeline_config["benchmark_performance"] = False
+ci_pipeline_config.pop("IGV_dir", None)
+
+## Propagate CI pipeline config keys into the snakemake config dict
+## so that rule params: blocks that reference config[...] work correctly
+for _key, _val in ci_pipeline_config.items():
+    config[_key] = _val
+
+## Globals required by the included pipeline rule files
+RESULTS_DIR = SCRATCH_DIR
+SCRIPTS_DIR = os.path.join(CI_WORKFLOW_DIR, "workflow", "scripts")
+WORKFLOW_DIR = CI_WORKFLOW_DIR
+IGV_DIR = SCRATCH_DIR
+MODEL_DIR = ci_pipeline_config.get("model_dir", "")
+
+## Include utils functions (make_biosample_config, get_abc_config, expand_biosample_df, etc.)
+include: os.path.join("rules", "utils.smk")
+
+## Write ABC biosample table and set up ABC module
+make_biosample_config(_ci_cell_clusters_tsv, _ci_abc_biosamples_tsv, SCRATCH_DIR)
+
+abc_config = get_abc_config(ci_pipeline_config, ci_pipeline_config["abc_dir"])
+ci_pipeline_config = update_scE2G_config(ci_pipeline_config, abc_config, ci_pipeline_config["abc_dir"])
+
+## Propagate any newly updated keys (gene_TSS500, chr_sizes) into config
+for _key in ("gene_TSS500", "chr_sizes"):
+    if _key in ci_pipeline_config:
+        config[_key] = ci_pipeline_config[_key]
+
+module ABC:
+    snakefile:
+        os.path.join(ci_pipeline_config["abc_dir"], "workflow", "Snakefile")
+    config: abc_config
+
+use rule * from ABC exclude all as abc_*
+
+BIOSAMPLE_DF = ABC.enable_retry(
+    pd.read_table,
+    func_args={"filepath_or_buffer": _ci_abc_biosamples_tsv}
+)
+BIOSAMPLE_DF = expand_biosample_df(BIOSAMPLE_DF)
+
+(BIOSAMPLE_NEEDS_ARC,
+ BIOSAMPLE_NEEDS_NUMCANDIDATEENHGENE,
+ BIOSAMPLE_NEEDS_NUMTSSENHGENE,
+ BIOSAMPLE_NEEDS_NEARBYENHANCERS) = compute_biosample_feature_requirements(BIOSAMPLE_DF)
+
+ABC_BIOSAMPLES_DIR = {biosample: os.path.join(SCRATCH_DIR, biosample) for biosample in BIOSAMPLE_DF["biosample"]}
+
+## Include all main pipeline rule files
+include: os.path.join("rules", "frag_to_tagAlign.smk")
+include: os.path.join("rules", "e2g_predictions.smk")
+include: os.path.join("rules", "e2g_genomewide_features.smk")
+include: os.path.join("rules", "make_kendall_pairs.smk")
+include: os.path.join("rules", "generate_atac_matrix.smk")
+include: os.path.join("rules", "compute_kendall.smk")
+include: os.path.join("rules", "arc_e2g.smk")
+include: os.path.join("rules", "add_external_features.smk")
+include: os.path.join("rules", "sc_predictions.smk")
+
+## Include CI rules
+include: os.path.join("rules", "ci_subsample.smk")
+include: os.path.join("rules", "ci_run.smk")
+include: os.path.join("rules", "ci_analysis.smk")
+
+
+## Final outputs: CI-annotated predictions per cluster and consolidated QC report
+rule all:
+    input:
+        expand(
+            os.path.join(CI_RESULTS_DIR, "{cluster}", MODEL, "encode_e2g_predictions_ci_annotated.tsv.gz"),
+            cluster=CLUSTERS
+        ),
+        expand(
+            os.path.join(CI_RESULTS_DIR, "{cluster}", MODEL, "ci_summary_stats.tsv"),
+            cluster=CLUSTERS
+        ),
+        os.path.join(CI_RESULTS_DIR, "ci_qc_report.html")

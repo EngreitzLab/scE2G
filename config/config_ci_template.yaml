@@ -1,0 +1,34 @@
+# CI workflow configuration
+# Run with: snakemake -s workflow/Snakefile_ci -j1 --use-conda --configfile config/config_ci.yaml
+
+# Path to a completed scE2G run (must have config/scE2G_config.yml and config/expanded_biosample_config.tsv)
+full_run_results_dir: "/path/to/full/run/results"
+
+# Per-subsample pipeline outputs (large; can be on scratch storage)
+scratch_dir: "/scratch/path/ci_subsamples"
+
+# Final CI-annotated outputs and reports
+results_dir: "/path/to/ci/results"
+
+# Which clusters and model to analyze
+# Model name must match one of the model_dir_base values in the full run
+clusters:
+  - "cluster_name_1"
+  - "cluster_name_2"
+model: "multiome_powerlaw_v3"
+
+# Pipeline depth:
+#   "full" (mode A) - re-run from fragment processing through model application
+#   "abc"  (mode B) - reuse full run's MACS2 peaks, re-run from ABC neighborhoods onward
+mode: "full"
+
+# Subsampling parameters
+n_subsamples: 10
+subsample_seed: 42       # base random seed; subsample i uses seed + i
+target_fraction: 0.70    # target fraction of cells per subsample
+min_cells: 100           # hard minimum cells; fraction is raised if needed to meet this
+min_fragments: 2000000   # hard minimum fragments; fraction is raised if needed to meet this
+
+# CI computation
+ci_level: 0.95           # confidence interval level (e.g., 0.95 = 2.5th/97.5th percentile)
+overlap_fraction: 0.50   # minimum reciprocal overlap to match elements across runs

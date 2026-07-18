@@ -1,0 +1,19 @@
+full_run_results_dir: "tests/test_output/powerlaw_v3_models"
+
+scratch_dir: "tests/test_output/ci_scratch"
+results_dir: "tests/test_output/ci_results"
+
+clusters:
+  - "K562_cluster1_chr22p"
+model: "multiome_powerlaw_v3"
+
+mode: "full"
+
+n_subsamples: 2
+subsample_seed: 42
+target_fraction: 0.70
+min_cells: 50          # relaxed for small test data (480 cells total)
+min_fragments: 1000    # relaxed for small test data (~4.4k fragments total)
+
+ci_level: 0.95
+overlap_fraction: 0.50
