@@ -7,3 +7,6 @@ tests/test_output/
 workflow/scripts/mine/
 *.dot
 *.png
+tests/unit/.pytest.done
+tests/unit/.testthat.done
+.pytest_cache/
