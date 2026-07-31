@@ -5,6 +5,11 @@
 # https://circleci.com/docs/language-python/ for more details
 version: 2.1
 
+parameters:
+  nightly:
+    type: boolean
+    default: false
+
 orbs:
   python: circleci/python@2.1.1
 
