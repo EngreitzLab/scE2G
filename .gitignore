@@ -10,3 +10,4 @@ workflow/scripts/mine/
 tests/unit/.pytest.done
 tests/unit/.testthat.done
 .pytest_cache/
+*.sif
