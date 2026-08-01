@@ -39,3 +39,5 @@ dependencies:
   - bioconductor-genomicranges
   - bioconductor-genomation
   - r-codetools
+  - pytest
+  - r-testthat
