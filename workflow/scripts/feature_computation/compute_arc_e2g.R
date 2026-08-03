@@ -1,7 +1,6 @@
 # Load required packages
 suppressPackageStartupMessages({
   library(GenomicRanges)
-  library(genomation)
   library(data.table)
 })
 
@@ -87,12 +86,14 @@ kendall_predictions_path = snakemake@input$kendall_predictions
 arc_predictions_path = snakemake@output$arc_predictions
 
 # Load ABC data
-pairs.E2G.ABC = readGeneric(abc_predictions_path,
-                            keep.all.metadata = T,
-                            header = T)
+pairs.E2G.ABC = makeGRangesFromDataFrame(fread(abc_predictions_path),
+                                         keep.extra.columns = TRUE,
+                                         starts.in.df.are.0based = TRUE)
 
 # Load Kendall data
-pairs.E2G.Kendall = GRanges(fread(kendall_predictions_path))
+pairs.E2G.Kendall = makeGRangesFromDataFrame(fread(kendall_predictions_path),
+                                              keep.extra.columns = TRUE,
+                                              starts.in.df.are.0based = TRUE)
 pairs.E2G.Kendall = 
   pairs.E2G.Kendall[!is.na(mcols(pairs.E2G.Kendall)[,"Kendall"])]
 
@@ -123,8 +124,11 @@ mcols(pairs.E2G.ABC)[,c("mean_log_normalized_rna",
                                          "RnaPseudobulkTPM")]
 
 # Write output to file
+# GRanges starts are 1-based inclusive; subtract 1 to restore the
+# 0-based BED convention of the input file.
 df.output = as.data.frame(pairs.E2G.ABC)
 colnames(df.output)[1] = "chr"
+df.output$start = df.output$start - 1L
 fwrite(df.output,
        file = arc_predictions_path,
        row.names = F,

@@ -3,7 +3,6 @@
 # Load required packages
 suppressPackageStartupMessages({
   library(GenomicRanges)
-  library(genomation)
   library(foreach)
   library(Signac)
   library(Seurat)
@@ -215,9 +214,9 @@ gex_out_path = snakemake@output$all_gex
 cores = as.integer(snakemake@threads)
 
 # Load candidate E-G pairs
-pairs.E2G = readGeneric(kendall_pairs_path,
-                        keep.all.metadata = T,
-                        header = T)
+pairs.E2G = makeGRangesFromDataFrame(fread(kendall_pairs_path),
+                                     keep.extra.columns = TRUE,
+                                     starts.in.df.are.0based = TRUE)
 
 # Load scATAC matrix
 matrix.atac_count = readRDS(atac_matrix_path)
@@ -301,7 +300,7 @@ df.pairs.E2G =
                               "RnaDetectedPercent",
                               "RnaPseudobulkTPM",
                               "Kendall")]
-colnames(df.pairs.E2G) = 
+colnames(df.pairs.E2G) =
   c("chr",
     "start",
     "end",
@@ -312,6 +311,9 @@ colnames(df.pairs.E2G) =
     "RnaDetectedPercent",
     "RnaPseudobulkTPM",
     "Kendall")
+# GRanges starts are 1-based inclusive; subtract 1 to restore the
+# 0-based BED convention of the input kendall_pairs file.
+df.pairs.E2G$start = df.pairs.E2G$start - 1L
 fwrite(df.pairs.E2G,
        file = kendall_predictions_path,
        row.names = F,
