@@ -82,6 +82,7 @@ include: os.path.join("rules", "arc_e2g.smk")
 include: os.path.join("rules", "add_external_features.smk")
 include: os.path.join("rules", "sc_predictions.smk")
 include: os.path.join("rules", "save_configs.smk")
+include: os.path.join("rules", "unit_tests.smk")
 
 
 ## Define the final outputs of the pipeline
