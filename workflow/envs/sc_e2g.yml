@@ -13,16 +13,21 @@ dependencies:
   - numpy
   - pandas
   - anndata>=0.11  # python anndata: reticulate backend for r-anndata's read_h5ad() (self-contained env, no external RETICULATE_PYTHON). Floor avoids conda resolving an ancient anndata (imports removed pandas.core.index) under the scikit-learn=1.2.1 pin; >=0.11 resolves to 0.12.x w/ numpy<2, py3.11 -- verified reads the HEP3B h5ad.
-  - python>=3.6
+  - python>=3.9  # fast_kendall_sc ships wheels for cp39+ only; an older python would fall back to a source build (needs rust + a C linker)
   - pigz
   - snakemake>=7.0
   - scikit-learn=1.2.1  # Must match with ENCODE-rE2G version
   - scipy
   - wget
   - pip
-  - rust>=1.78  # cargo>=1.78 required for fast_kendall_sc's Cargo.lock v4 (via maturin)
   - pip:
-    - fast_kendall_sc @ git+https://github.com/EngreitzLab/fast_kendall_sc.git@v1.0.0
+    # Prebuilt manylinux2014 wheel -- no rust/cargo or C linker needed at
+    # install time. A git+ install would compile from source, which fails in
+    # CI and in the container: cargo's linker is `cc`, the mambaforge image
+    # has no compiler, and conda's own compiler packages never put a plain
+    # `cc` on PATH (the binary is x86_64-conda-linux-gnu-gcc, and the pip
+    # step of `mamba env create` runs without the env activated).
+    - fast_kendall_sc==1.0.0
   - r-base
   - r-r.utils
   - r-data.table
