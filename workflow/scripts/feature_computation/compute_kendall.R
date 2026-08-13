@@ -285,6 +285,12 @@ out_cols = c("chr",
              "RnaPseudobulkTPM",
              "Kendall")
 df.pairs.E2G = pairs.E2G[, ..out_cols]
+
+# Sort deterministically by genomic position, independent of whatever order
+# the candidate pairs file happened to arrive in (data.table's row order
+# here just reflects that upstream file, not a meaningful convention).
+setorder(df.pairs.E2G, chr, start, end, TargetGene)
+
 fwrite(df.pairs.E2G,
        file = kendall_predictions_path,
        row.names = F,
