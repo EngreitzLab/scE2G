@@ -21,7 +21,8 @@ rule compute_kendall:
 			lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "rna_matrix_file"],
 	params:
 		gene_gtf = config["gene_annotations"],
-		abc_genes = config['gene_TSS500']
+		abc_genes = config['gene_TSS500'],
+		python_script = os.path.join(SCRIPTS_DIR, "feature_computation", "compute_kendall.py")
 	output:
 		kendall_predictions = 
 			os.path.join(

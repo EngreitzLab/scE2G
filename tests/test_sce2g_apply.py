@@ -72,9 +72,14 @@ class scE2GTest(unittest.TestCase):
         test_file = os.path.join(TEST_OUTPUT_DIR, biosample, pred_file)
         expected_file = os.path.join(EXPECTED_OUTPUT_DIR, biosample, pred_file)
         print(f"Comparing biosample: {biosample} for pred_file: {pred_file}")
+        # Row order isn't a meaningful contract for these files (e.g. Kendall's
+        # order just reflects whatever order its candidate pairs happened to
+        # arrive in) -- sort by identity columns before comparing, same as
+        # hash_large_file() already does for the large-file checks below.
+        sort_cols = [c for c in ["chr", "start", "end", "name", "TargetGene"] if c in cols_to_compare]
         pd.testing.assert_frame_equal(
-            get_filtered_dataframe(test_file, cols_to_compare),
-            get_filtered_dataframe(expected_file, cols_to_compare),
+            get_filtered_dataframe(test_file, cols_to_compare).sort_values(sort_cols).reset_index(drop=True),
+            get_filtered_dataframe(expected_file, cols_to_compare).sort_values(sort_cols).reset_index(drop=True),
         )
 
     def compare_large_file_checksum(self, biosample: str, pred_file: str, score_cols) -> None:

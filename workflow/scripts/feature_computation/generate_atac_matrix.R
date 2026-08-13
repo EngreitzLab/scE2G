@@ -1,5 +1,15 @@
 ## Generate single-cell ATAC-seq matrix for a specific cluster
 
+# Pin reticulate to THIS conda env's python (has python anndata). Without this,
+# reticulate bootstraps an ephemeral uv env that lacks anndata, so read_h5ad()
+# fails with ModuleNotFoundError. Must run before the first read_h5ad.
+local({
+  conda_py <- file.path(Sys.getenv("CONDA_PREFIX"), "bin", "python")
+  if (nzchar(Sys.getenv("CONDA_PREFIX")) && file.exists(conda_py)) {
+    Sys.setenv(RETICULATE_PYTHON = conda_py)
+  }
+})
+
 # Load required packages
 suppressPackageStartupMessages({
   library(genomation)
