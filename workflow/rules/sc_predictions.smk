@@ -119,19 +119,10 @@ def get_gex_file(wildcards):
 	with checkpoints.features_required.get(sample=wildcards.cluster).output.to_generate.open() as f:
 		val = f.read().strip()
 		if val == "Kendall" or val == "ARC":
-			# A real file, produced by compute_kendall; its timestamp genuinely should
-			# trigger a rerun.
 			return os.path.join(RESULTS_DIR, wildcards.cluster, "Kendall", "gene_expression_metrics.tsv.gz")
 		else:
-			# No Kendall/ARC features, so compute_kendall never runs and there is no
-			# gene-expression file to point at; the results directory stands in as a
-			# placeholder. generate_element_gene_lists.R only reads this input inside
-			# `if ("RNA_pseudobulkTPM" %in% colnames(pred))`, which is false when no
-			# RNA-derived features were computed, so the value is not read and its
-			# timestamp carries no correctness information. ancient() keeps the
-			# dependency edge while ignoring the timestamp -- see the comment in
-			# rules/generate_atac_matrix.smk for the full mechanism. A missing output
-			# still triggers the job normally.
+			# compute_kendall never ran, so there is no gene expression file;
+			# ancient() keeps the dependency but ignores this placeholder's mtime
 			return ancient(RESULTS_DIR)
 
 rule element_and_gene_summaries:
@@ -156,20 +147,10 @@ def get_count_file(wildcards, metric):
 	with checkpoints.features_required.get(sample=wildcards.cluster).output.to_generate.open() as f:
 		val = f.read().strip()
 		if val == "Kendall" or val == "ARC":
-			# A real file, produced by compute_kendall; its timestamp genuinely
-			# should trigger a rerun.
 			return os.path.join(RESULTS_DIR, wildcards.cluster, f"{metric}.txt")
 		else:
-			# Neither Kendall nor ARC is required, so compute_kendall never runs and
-			# there is no count file to point at; the results directory stands in as a
-			# placeholder. get_stats_per_cluster.R guards it with
-			# `if (file.info(path)$isdir)` and substitutes 0, so the value is never
-			# read and its timestamp carries no correctness information -- but
-			# Snakemake still tracks its mtime, and a directory's mtime bumps whenever
-			# an entry is added or removed directly inside it. See the comment in
-			# rules/generate_atac_matrix.smk for the full mechanism; ancient() keeps
-			# the dependency edge while ignoring the timestamp. A missing output still
-			# triggers the job normally.
+			# compute_kendall never ran, so there is no count file; this placeholder
+			# is never read, and ancient() ignores its mtime
 			return ancient(RESULTS_DIR)
 
 rule get_stats_per_model_per_cluster:

@@ -27,17 +27,10 @@ def make_biosample_config(cluster_config, biosample_config, results_dir):
 	It is designed for use in the ABC pipeline. In this context, each cell cluster is treated as an individual biosample.
 	Additionally, the function sets up necessary file paths and directories for the biosample data.
 
-	This function is called at parse time, so it runs on every single Snakemake
-	invocation -- including `--dry-run`, `--unlock`, and each remote job's
-	re-parse on a compute node. The biosample config it produces is a declared
-	input of downstream rules (e.g. ENCODE_rE2G's make_biosample_feature_table),
-	so rewriting it unconditionally would refresh its mtime on every invocation
-	and make Snakemake consider the whole downstream DAG out of date, even when
-	nothing changed. It is therefore written "if changed": the table is rendered
-	to a temporary file and only moved into place when it differs from what is
-	already there, leaving the mtime alone for no-op invocations while still
-	updating (and correctly triggering reruns) whenever the cluster config
-	really does change.
+	The table is written only when its content changes. This function runs at parse
+	time on every invocation, and the table is a declared input of downstream rules,
+	so rewriting it unconditionally would refresh its mtime and make the downstream
+	DAG look out of date.
 
 	:param cluster_config: Path to the input cell cluster configuration file.
 	:param biosample_config: Path for the output biosample configuration file.
@@ -61,9 +54,7 @@ def make_biosample_config(cluster_config, biosample_config, results_dir):
 	if not os.path.exists(output_dir):
 		os.makedirs(output_dir)
 
-	# Render to a temporary file in the destination directory, so the bytes
-	# compared below are produced by exactly the same code path that would
-	# write the final file, and so the move into place is atomic.
+	# Render to a temp file in the destination dir so the move into place is atomic
 	tmp_fd, tmp_path = tempfile.mkstemp(
 		dir=output_dir,
 		prefix=os.path.basename(biosample_config) + ".",
@@ -71,19 +62,18 @@ def make_biosample_config(cluster_config, biosample_config, results_dir):
 	)
 	os.close(tmp_fd)
 	try:
-		# mkstemp() is deliberately 0600; restore the permissions a plain
-		# open() would have given the file so group-shared results stay readable.
+		# mkstemp() is 0600; restore the permissions a plain open() would have given
 		umask = os.umask(0)
 		os.umask(umask)
 		os.chmod(tmp_path, 0o666 & ~umask)
 
 		df.to_csv(tmp_path, sep='\t', index=False)
 
-		# Unchanged content: leave the existing file (and its mtime) untouched.
+		# Unchanged content: leave the existing file, and its mtime, untouched
 		if os.path.exists(biosample_config) and filecmp.cmp(tmp_path, biosample_config, shallow=False):
 			return
 
-		# First run, or the content really changed: publish atomically.
+		# First run, or content changed: publish atomically
 		os.replace(tmp_path, biosample_config)
 		tmp_path = None
 	finally:

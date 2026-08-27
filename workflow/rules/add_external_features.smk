@@ -25,23 +25,12 @@ def features_to_generate(wildcards):
 	with checkpoints.features_required.get(sample=wildcards.sample).output.to_generate.open() as f:
 		val = f.read().strip()
 		if val == "Kendall":
-			# Real files, produced upstream; their timestamps genuinely should trigger
-			# a rerun, and declaring them is what pulls the Kendall/ARC branch into
-			# the DAG at all.
 			return os.path.join(RESULTS_DIR, "{sample}", "Kendall", "Pairs.Kendall.tsv.gz")
 		elif val == "ARC":
 			return os.path.join(RESULTS_DIR, "{sample}", "ARC", "EnhancerPredictionsAllPutative_ARC.tsv.gz")
 		else:
-			# No external features are required, so there is no feature file to point
-			# at and the results directory stands in as a placeholder. It is never
-			# opened: format_external_features_config_sc.R only pattern-matches the
-			# path string against "Pairs.Kendall.tsv.gz"/"EnhancerPredictionsAllPutative_ARC.tsv.gz",
-			# both of which fail for a directory, so no rows are added. Its timestamp
-			# therefore carries no correctness information, yet Snakemake still tracks
-			# it, and a directory's mtime bumps whenever an entry is added or removed
-			# directly inside it. See the comment in rules/generate_atac_matrix.smk for
-			# the full mechanism; ancient() keeps the dependency edge while ignoring
-			# the timestamp. A missing output still triggers the job normally.
+			# No features to generate, so this placeholder is never read;
+			# ancient() keeps the dependency but ignores its mtime
 			return ancient(RESULTS_DIR)
 
 # activate generation of Kendall/ARC and format external_features_config
