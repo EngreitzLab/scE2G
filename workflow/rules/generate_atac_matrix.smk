@@ -1,8 +1,22 @@
 ## get list of cells defining this cluster
 def get_cell_barcode_file(RNA_filt):
 	if RNA_filt:
-		return RESULTS_DIR
+		# A pre-filtered RNA matrix needs no barcode list, so this branch has no
+		# real file to point at and returns the results directory as a placeholder.
+		# generate_atac_matrix.R guards the input with `file_test("-f", ...)`, which
+		# is FALSE for a directory, so it is never read -- but Snakemake still tracks
+		# its mtime, and a directory's mtime changes whenever an entry is added or
+		# removed anywhere directly inside it. Any rule that creates a new
+		# subdirectory under RESULTS_DIR therefore invalidates generate_atac_matrix
+		# for EVERY cluster, cascading into compute_kendall and arc_e2g and
+		# recomputing hours of work for byte-identical output.
+		#
+		# ancient() keeps the dependency while telling Snakemake to ignore the
+		# timestamp, which is exactly right for an input the script never reads. A
+		# missing output still triggers the job normally.
+		return ancient(RESULTS_DIR)
 	else:
+		# A real file here, and its timestamp genuinely should trigger a rerun.
 		return os.path.join(RESULTS_DIR, "{cluster}", "Kendall", "cell_barcodes.txt")
 
 rule get_cell_barcodes:
