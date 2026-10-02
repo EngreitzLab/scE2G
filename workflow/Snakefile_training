@@ -18,6 +18,7 @@ include: os.path.join("rules", "utils_training.smk")
 
 ## Resolve scE2G's own directory from the currently-parsed Snakefile 
 WORKFLOW_DIR = os.path.dirname(str(workflow.current_basedir))
+SCRIPTS_DIR = os.path.join(WORKFLOW_DIR, "workflow", "scripts")
 
 ## Update paths in the config to be compatible with github submodules
 # Need to manually make results_dir an absolute path since above may
