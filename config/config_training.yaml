@@ -9,6 +9,10 @@ results_dir: "results/example_results/"
 ### OPTIONS
 # only set this to True if you are sure that your fragment files (1) are sorted  with sort -k1,1 2n,n and (2) only contain fragments on chromosomes in the chromosome sizes reference file 
 fragments_preprocessed: False 
+# set this to True if the RNA matrix contains the exact set of cells as the ATAC fragment file, and False if it contains more cells (default if not specified: True)
+RNA_matrix_filtered: True
+# If the cell count in a cell type exceeds the max_cell_count, randomly extract max_cell_count cells.
+max_cell_count: 20000
 run_feature_analysis: False
 # max memory for submitted jobs
 max_memory_allocation_mb: 250000
