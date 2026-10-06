@@ -1,3 +1,7 @@
+import filecmp
+import tempfile
+
+
 ## Update paths in the config obj to absolute path
 def make_paths_absolute(obj, base_path):
 	"""
@@ -23,6 +27,11 @@ def make_biosample_config(cluster_config, biosample_config, results_dir):
 	It is designed for use in the ABC pipeline. In this context, each cell cluster is treated as an individual biosample.
 	Additionally, the function sets up necessary file paths and directories for the biosample data.
 
+	The table is written only when its content changes. This function runs at parse
+	time on every invocation, and the table is a declared input of downstream rules,
+	so rewriting it unconditionally would refresh its mtime and make the downstream
+	DAG look out of date.
+
 	:param cluster_config: Path to the input cell cluster configuration file.
 	:param biosample_config: Path for the output biosample configuration file.
 	:param results_dir: Directory where result files are stored.
@@ -45,7 +54,31 @@ def make_biosample_config(cluster_config, biosample_config, results_dir):
 	if not os.path.exists(output_dir):
 		os.makedirs(output_dir)
 
-	df.to_csv(biosample_config, sep='\t', index=False)
+	# Render to a temp file in the destination dir so the move into place is atomic
+	tmp_fd, tmp_path = tempfile.mkstemp(
+		dir=output_dir,
+		prefix=os.path.basename(biosample_config) + ".",
+		suffix=".tmp"
+	)
+	os.close(tmp_fd)
+	try:
+		# mkstemp() is 0600; restore the permissions a plain open() would have given
+		umask = os.umask(0)
+		os.umask(umask)
+		os.chmod(tmp_path, 0o666 & ~umask)
+
+		df.to_csv(tmp_path, sep='\t', index=False)
+
+		# Unchanged content: leave the existing file, and its mtime, untouched
+		if os.path.exists(biosample_config) and filecmp.cmp(tmp_path, biosample_config, shallow=False):
+			return
+
+		# First run, or content changed: publish atomically
+		os.replace(tmp_path, biosample_config)
+		tmp_path = None
+	finally:
+		if tmp_path is not None and os.path.exists(tmp_path):
+			os.remove(tmp_path)
 
 
 ## Import configuration for ENCODE_rE2G
