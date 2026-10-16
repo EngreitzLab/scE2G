@@ -26,7 +26,7 @@ rule frag_to_tagAlign:
 			)	
 	params:
 		chrSizes = config["chr_sizes"],
-		bedSplitSort = workflow.source_path("../scripts/bedSplitSort.sh")
+		bedSplitSort = os.path.join(SCRIPTS_DIR, "bedSplitSort.sh")
 	conda:
 		"../envs/sc_e2g.yml"
 	threads: 8
