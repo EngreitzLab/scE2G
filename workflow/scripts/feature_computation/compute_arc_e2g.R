@@ -114,13 +114,15 @@ df.gene_exp = mcols(pairs.E2G.Kendall)[,c("TargetGene",
                                           "RnaPseudobulkTPM")]
 df.gene_exp = as.data.frame(df.gene_exp)
 df.gene_exp = df.gene_exp[!duplicated(df.gene_exp$TargetGene),]
-rownames(df.gene_exp) = df.gene_exp$TargetGene
-mcols(pairs.E2G.ABC)[,c("mean_log_normalized_rna",
-                        "RnaDetectedPercent",
-                        "RnaPseudobulkTPM")] = 
-  df.gene_exp[pairs.E2G.ABC$TargetGene,c("mean_log_normalized_rna",
-                                         "RnaDetectedPercent",
-                                         "RnaPseudobulkTPM")]
+# Look genes up with exact match(), not by row name: `[.data.frame` partially
+# matches character row indices, so a gene missing from df.gene_exp whose
+# symbol is a unique prefix of a present gene's symbol (e.g. OXT and OXTR)
+# would silently receive that gene's metrics. Missing genes get NA.
+gex_cols = c("mean_log_normalized_rna",
+             "RnaDetectedPercent",
+             "RnaPseudobulkTPM")
+idx.gene_exp = match(pairs.E2G.ABC$TargetGene, df.gene_exp$TargetGene)
+mcols(pairs.E2G.ABC)[,gex_cols] = df.gene_exp[idx.gene_exp, gex_cols]
 
 # Write output to file
 df.output = as.data.frame(pairs.E2G.ABC)
