@@ -129,6 +129,17 @@ pairs.E2G.ABC = IntegrateABC(pairs.E2G.ABC,
 idx.gene_exp = match(pairs.E2G.ABC$TargetGene, df.gene_exp$TargetGene)
 mcols(pairs.E2G.ABC)[,gex_cols] = df.gene_exp[idx.gene_exp, gex_cols]
 
+# Report genes left without metrics (e.g. genes absent from the RNA matrix):
+# their NA metrics become 0 downstream, so the TPM filter zeroes their scores.
+genes.no_gene_exp = unique(pairs.E2G.ABC$TargetGene[is.na(idx.gene_exp)])
+if (length(genes.no_gene_exp) > 0) {
+  message(length(genes.no_gene_exp), " of ",
+          length(unique(pairs.E2G.ABC$TargetGene)),
+          " target genes have no RNA metrics in ", kendall_predictions_path,
+          "; their RNA columns are NA (treated as 0 TPM downstream). First genes: ",
+          paste(head(genes.no_gene_exp, 10), collapse = ", "))
+}
+
 # Write output to file
 df.output = as.data.frame(pairs.E2G.ABC)
 colnames(df.output)[1] = "chr"
