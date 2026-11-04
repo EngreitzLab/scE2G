@@ -94,20 +94,14 @@ pairs.E2G.ABC = readGeneric(abc_predictions_path,
 # Load Kendall data
 pairs.E2G.Kendall = GRanges(fread(kendall_predictions_path))
 
-# Gene-level RNA metrics, one row per gene. Take them from all pairs, before
-# the NA-Kendall pairs are dropped below: the metrics are properties of the
-# gene, not of the pair, and a gene whose Kendall is NA on every pair (e.g. a
-# gene with zero expression) must keep its own metrics instead of dropping out
-# of the table.
+# Get gene expression metrics for all genes, including those without Kendall correlation
 gex_cols = c("mean_log_normalized_rna",
              "RnaDetectedPercent",
              "RnaPseudobulkTPM")
 df.gene_exp = as.data.frame(mcols(pairs.E2G.Kendall)[,c("TargetGene", gex_cols)])
 df.gene_exp = df.gene_exp[!duplicated(df.gene_exp$TargetGene),]
 
-# Drop NA-Kendall pairs before AddMax(). Reassigning the same variable lets the
-# unfiltered object be garbage-collected.
-pairs.E2G.Kendall =
+pairs.E2G.Kendall = 
   pairs.E2G.Kendall[!is.na(mcols(pairs.E2G.Kendall)[,"Kendall"])]
 
 # Add Kendall correlation as a new column of ABC prediction
@@ -121,16 +115,11 @@ pairs.E2G.ABC = IntegrateABC(pairs.E2G.ABC,
                               "Kendall",
                               "ARC.E2G.Score")
 
-# Copy gene-level RNA metrics onto the ABC pairs. Look genes up with exact
-# match(), not by row name: `[.data.frame` partially matches character row
-# indices, so a gene missing from df.gene_exp whose symbol is a unique prefix
-# of a present gene's symbol (e.g. OXT and OXTR) would silently receive that
-# gene's metrics. Missing genes get NA.
+# Copy gene expression metrics
 idx.gene_exp = match(pairs.E2G.ABC$TargetGene, df.gene_exp$TargetGene)
 mcols(pairs.E2G.ABC)[,gex_cols] = df.gene_exp[idx.gene_exp, gex_cols]
 
-# Report genes left without metrics (e.g. genes absent from the RNA matrix):
-# their NA metrics become 0 downstream, so the TPM filter zeroes their scores.
+# Report genes without gene expression metrics
 genes.no_gene_exp = unique(pairs.E2G.ABC$TargetGene[is.na(idx.gene_exp)])
 if (length(genes.no_gene_exp) > 0) {
   message(length(genes.no_gene_exp), " of ",

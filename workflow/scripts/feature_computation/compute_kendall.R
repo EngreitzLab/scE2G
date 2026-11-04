@@ -160,10 +160,7 @@ map_gene_names <- function(rna_matrix, df_exp, gene_gtf_path, abc_genes_path){
   message("Number of genes in RNA matrix after matching: ", length(rownames(rna_matrix_filt)))
 
 
-	# do the same for expression df. Index by exact match(): character row
-	# indexing of a data.frame partially matches row names. row_sub comes from
-	# intersect() with the RNA matrix's row names, which df_exp shares, so every
-	# key must be found.
+	# do the same for expression df
 	idx_exp <- match(row_sub, rownames(df_exp))
 	stopifnot(!anyNA(idx_exp))
 	df_exp_filt <- df_exp[idx_exp,]
@@ -271,11 +268,7 @@ pairs.E2G = run_kendall_python(kendall_inputs,
                                colname.output = "Kendall",
                                python_script_path = python_script_path)
 
-# add gene expression metrics to E2G pairs, matched exactly by TargetGene
-# (character row indexing of a data.frame would partially match row names).
-# prepare_kendall_inputs() keeps only pairs whose gene is a row of the filtered
-# RNA matrix, which has the same row names as df.exp_filt, so every pair's gene
-# must be found; fail loudly if not.
+# add gene expression metrics to E2G pairs (row-matched by TargetGene)
 gex_cols = c("mean_log_normalized_rna",
              "RnaDetectedPercent",
              "RnaPseudobulkTPM")
