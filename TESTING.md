@@ -54,10 +54,7 @@ even when the env files haven't changed:
 `workflow/rules/unit_tests.smk` adds `test_python_unit`/`test_r_unit` Snakemake rules that run
 `pytest tests/unit/python` / `testthat::test_dir("tests/unit/r")` through Snakemake's own
 `--use-conda` env resolution for `sc_e2g.yml` (no second conda env to build). Real tests exist for
-`training_functions.py`, `run_e2g_cv.py` (Python), and `get_fill_values.R` and `compute_arc_e2g.R`
-(R). `test_compute_arc_e2g.R` runs the whole rule script on small synthetic inputs with a stand-in
-`snakemake` S4 object, so it needs no refactor of the script; it guards the gene-level RNA metric
-lookup (issue #114: partial row-name matching gave e.g. OXT the metrics of OXTR).
+`training_functions.py`, `run_e2g_cv.py` (Python), and `get_fill_values.R` (R).
 
 Gotchas:
 - Snakemake's bash strict mode treats pytest's exit code 5 ("no tests collected") and testthat's
@@ -69,7 +66,7 @@ Gotchas:
 
 **Follow-up refactor pattern (not yet applied)**: `get_fill_values.R` needed no changes since it
 was already a plain sourceable function file. The more monolithic rule scripts
-(`compute_kendall.R`, `merge_features_with_crispr_data_apply.R`) interleave
+(`compute_kendall.R`, `compute_arc_e2g.R`, `merge_features_with_crispr_data_apply.R`) interleave
 pure logic with `snakemake@input`-style script-level I/O and aren't unit-testable as-is. When
 tackling those, wrap the script-level I/O in `if (exists("snakemake")) { ... }` so the file stays
 sourceable (for tests) while still working as a Snakemake `script:` when `snakemake` the object is
