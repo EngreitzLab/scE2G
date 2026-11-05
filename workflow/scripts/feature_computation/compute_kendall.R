@@ -161,7 +161,9 @@ map_gene_names <- function(rna_matrix, df_exp, gene_gtf_path, abc_genes_path){
 
 
 	# do the same for expression df
-	df_exp_filt <- df_exp[row_sub,]
+	idx_exp <- match(row_sub, rownames(df_exp))
+	stopifnot("Every RNA matrix gene must have expression metrics" = !anyNA(idx_exp))
+	df_exp_filt <- df_exp[idx_exp,]
 	rownames(df_exp_filt) <- gene_key[row_sub]
 
 	return(list(rna_matrix_filt, df_exp_filt))
@@ -270,7 +272,9 @@ pairs.E2G = run_kendall_python(kendall_inputs,
 gex_cols = c("mean_log_normalized_rna",
              "RnaDetectedPercent",
              "RnaPseudobulkTPM")
-pairs.E2G[, (gex_cols) := df.exp_filt[pairs.E2G$TargetGene, gex_cols]]
+idx_exp = match(pairs.E2G$TargetGene, rownames(df.exp_filt))
+stopifnot("Every E2G pair target gene must have expression metrics" = !anyNA(idx_exp))
+pairs.E2G[, (gex_cols) := df.exp_filt[idx_exp, gex_cols]]
 
 # Write output to file. Columns are already named chr/start/end (no seqnames
 # rename needed, unlike the old GRanges as.data.frame() path).

@@ -93,6 +93,14 @@ pairs.E2G.ABC = readGeneric(abc_predictions_path,
 
 # Load Kendall data
 pairs.E2G.Kendall = GRanges(fread(kendall_predictions_path))
+
+# Get gene expression metrics for all genes, including those without Kendall correlation
+gex_cols = c("mean_log_normalized_rna",
+             "RnaDetectedPercent",
+             "RnaPseudobulkTPM")
+df.gene_exp = as.data.frame(mcols(pairs.E2G.Kendall)[,c("TargetGene", gex_cols)])
+df.gene_exp = df.gene_exp[!duplicated(df.gene_exp$TargetGene),]
+
 pairs.E2G.Kendall = 
   pairs.E2G.Kendall[!is.na(mcols(pairs.E2G.Kendall)[,"Kendall"])]
 
@@ -107,20 +115,19 @@ pairs.E2G.ABC = IntegrateABC(pairs.E2G.ABC,
                               "Kendall",
                               "ARC.E2G.Score")
 
-# Copy mean log normalized gene expression
-df.gene_exp = mcols(pairs.E2G.Kendall)[,c("TargetGene",
-                                          "mean_log_normalized_rna",
-                                          "RnaDetectedPercent",
-                                          "RnaPseudobulkTPM")]
-df.gene_exp = as.data.frame(df.gene_exp)
-df.gene_exp = df.gene_exp[!duplicated(df.gene_exp$TargetGene),]
-rownames(df.gene_exp) = df.gene_exp$TargetGene
-mcols(pairs.E2G.ABC)[,c("mean_log_normalized_rna",
-                        "RnaDetectedPercent",
-                        "RnaPseudobulkTPM")] = 
-  df.gene_exp[pairs.E2G.ABC$TargetGene,c("mean_log_normalized_rna",
-                                         "RnaDetectedPercent",
-                                         "RnaPseudobulkTPM")]
+# Copy gene expression metrics
+idx.gene_exp = match(pairs.E2G.ABC$TargetGene, df.gene_exp$TargetGene)
+mcols(pairs.E2G.ABC)[,gex_cols] = df.gene_exp[idx.gene_exp, gex_cols]
+
+# Report genes without gene expression metrics
+genes.no_gene_exp = unique(pairs.E2G.ABC$TargetGene[is.na(idx.gene_exp)])
+if (length(genes.no_gene_exp) > 0) {
+  message(length(genes.no_gene_exp), " of ",
+          length(unique(pairs.E2G.ABC$TargetGene)),
+          " target genes have no RNA metrics in ", kendall_predictions_path,
+          "; their RNA columns are NA (treated as 0 TPM downstream). First genes: ",
+          paste(head(genes.no_gene_exp, 10), collapse = ", "))
+}
 
 # Write output to file
 df.output = as.data.frame(pairs.E2G.ABC)
