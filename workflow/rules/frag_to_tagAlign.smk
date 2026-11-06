@@ -63,7 +63,8 @@ rule frag_to_tagAlign:
 if config["fragments_preprocessed"]:
 	rule get_fragment_count:
 		input:
-			frag_file = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"]
+			frag_file = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"],
+			frag_index = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"] + ".tbi"
 		resources: mem_mb=encode_e2g.ABC.determine_mem_mb
 		output:
 			fragment_count = (os.path.join(RESULTS_DIR, "{cluster}", "fragment_count.txt")),
@@ -74,7 +75,8 @@ if config["fragments_preprocessed"]:
 else:
 	rule process_fragment_file:
 		input:
-			frag_file = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"]
+			frag_file = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"],
+			frag_index = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"] + ".tbi"
 		params:
 			chrSizes = config["chr_sizes"]
 		output:
