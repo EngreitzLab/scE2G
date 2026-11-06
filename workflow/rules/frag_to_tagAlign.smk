@@ -100,7 +100,7 @@ else:
 			awk 'NR==FNR {{keep[$1]; next}} $1 in keep' {params.chrSizes} <(zcat {input.frag_file})  | bgzip > {output.fragments_filtered}
 			tabix -p bed {output.fragments_filtered}
 
-			zcat {output.fragments_filtered} | wc -l > {output.fragment_count}
+			zcat {input.frag_file} | wc -l > {output.fragment_count}
 			"""
 
 ## create bigwig from fragment file
