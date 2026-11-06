@@ -95,7 +95,7 @@ else:
 			"../envs/sc_e2g.yml"
 		shell:
 			"""
-			LC_ALL=C 
+			export LC_ALL=C
 			# get fragment & cell count
 			awk 'NR==FNR {{keep[$1]; next}} $1 in keep' {params.chrSizes} <(zcat {input.frag_file})  | bgzip > {output.fragments_filtered}
 			tabix -p bed {output.fragments_filtered}
@@ -121,7 +121,7 @@ rule frag_to_bigWig:
 		"../envs/sc_e2g.yml"
 	shell:
 		"""
-			LC_ALL=C
+			export LC_ALL=C
 			export BUFFER_SIZE=$(awk -v mem_mb={resources.mem_mb} -v threads={threads} 'BEGIN {{ result = mem_mb/threads/2; print int(result) "M" }}')
 			zcat {input.frag_file} | \
 				bedtools genomecov -bg -i stdin -g {params.chrSizes} | \
@@ -147,7 +147,7 @@ rule frag_to_norm_bigWig:
 		"../envs/sc_e2g.yml"
 	shell:
 		"""
-			LC_ALL=C
+			export LC_ALL=C
 			export BUFFER_SIZE=$(awk -v mem_mb={resources.mem_mb} -v threads={threads} 'BEGIN {{ result = mem_mb/threads/2; print int(result) "M" }}')
 			frag_count=$(<{input.fragment_count})
 			scale_factor=$(awk "BEGIN {{print 1000000 / $frag_count}}")
