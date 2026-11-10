@@ -7,7 +7,7 @@ model_config: "config/config_models.tsv"
 results_dir: "results/example_results/"
 
 ### OPTIONS
-# only set this to True if you are sure that your fragment files only contain fragments on chromosomes in the chromosome sizes reference file. They should already be sorted.
+# only set this to True if you are sure that your fragment files only contain fragments on chromosomes in the chromosome sizes reference file (default if not specified: False)
 fragments_preprocessed: False 
 # set this to True if the RNA matrix contains the exact set of cells as the ATAC fragment file, and False if it contains more cells (default if not specified: True)
 RNA_matrix_filtered: True

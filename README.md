@@ -86,12 +86,13 @@ See example data in `resources/example_chr22_multiome_cluster/` folder.
 
 - **Format:** One file per cell cluster with corresponding `*.tbi` index files
 - **Requirements:**
-  - Sorted by coordinates, compressed using `bgzip`, and indexed with `tabix`
+  - Sorted by coordinates, compressed using `bgzip`
+  - Indexed with `tabix`
   - 5 columns (no header) corresponding to: `chr`, `start`, `end`, `cell_name`, `read_count`
   - Cell names must match RNA count matrix column names
   - Must contain exact set of cells represented in RNA matrix
   
-  *Note: scE2G uses the presence of an index file as confirmation your ATAC fragment file is sorted so chromosomes are contiguous.*
+  *Note: scE2G uses the presence of an index file as confirmation chromosomes in your ATAC fragment file are contiguous.*
  
 **Preparation:**
 ```bash
