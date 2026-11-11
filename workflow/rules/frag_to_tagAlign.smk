@@ -63,7 +63,8 @@ rule frag_to_tagAlign:
 if config["fragments_preprocessed"]:
 	rule get_fragment_count:
 		input:
-			frag_file = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"]
+			frag_file = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"],
+			frag_index = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"] + ".tbi"
 		resources: mem_mb=encode_e2g.ABC.determine_mem_mb
 		output:
 			fragment_count = (os.path.join(RESULTS_DIR, "{cluster}", "fragment_count.txt")),
@@ -74,7 +75,8 @@ if config["fragments_preprocessed"]:
 else:
 	rule process_fragment_file:
 		input:
-			frag_file = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"]
+			frag_file = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"],
+			frag_index = lambda wildcards: CELL_CLUSTER_DF.loc[wildcards.cluster, "atac_frag_file"] + ".tbi"
 		params:
 			chrSizes = config["chr_sizes"]
 		output:
@@ -93,12 +95,12 @@ else:
 			"../envs/sc_e2g.yml"
 		shell:
 			"""
-			LC_ALL=C 
+			export LC_ALL=C
 			# get fragment & cell count
 			awk 'NR==FNR {{keep[$1]; next}} $1 in keep' {params.chrSizes} <(zcat {input.frag_file})  | bgzip > {output.fragments_filtered}
 			tabix -p bed {output.fragments_filtered}
 
-			zcat {output.fragments_filtered} | wc -l > {output.fragment_count}
+			zcat {input.frag_file} | wc -l > {output.fragment_count}
 			"""
 
 ## create bigwig from fragment file
@@ -119,7 +121,7 @@ rule frag_to_bigWig:
 		"../envs/sc_e2g.yml"
 	shell:
 		"""
-			LC_ALL=C
+			export LC_ALL=C
 			export BUFFER_SIZE=$(awk -v mem_mb={resources.mem_mb} -v threads={threads} 'BEGIN {{ result = mem_mb/threads/2; print int(result) "M" }}')
 			zcat {input.frag_file} | \
 				bedtools genomecov -bg -i stdin -g {params.chrSizes} | \
@@ -145,7 +147,7 @@ rule frag_to_norm_bigWig:
 		"../envs/sc_e2g.yml"
 	shell:
 		"""
-			LC_ALL=C
+			export LC_ALL=C
 			export BUFFER_SIZE=$(awk -v mem_mb={resources.mem_mb} -v threads={threads} 'BEGIN {{ result = mem_mb/threads/2; print int(result) "M" }}')
 			frag_count=$(<{input.fragment_count})
 			scale_factor=$(awk "BEGIN {{print 1000000 / $frag_count}}")

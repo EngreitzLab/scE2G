@@ -86,10 +86,13 @@ See example data in `resources/example_chr22_multiome_cluster/` folder.
 
 - **Format:** One file per cell cluster with corresponding `*.tbi` index files
 - **Requirements:**
-  - Sorted by coordinates, compressed using `bgzip`, and indexed with `tabix`
+  - Sorted by coordinates, compressed using `bgzip`
+  - Indexed with `tabix`
   - 5 columns (no header) corresponding to: `chr`, `start`, `end`, `cell_name`, `read_count`
   - Cell names must match RNA count matrix column names
   - Must contain exact set of cells represented in RNA matrix
+  
+  *Note: scE2G uses the presence of an index file as confirmation chromosomes in your ATAC fragment file are contiguous.*
  
 **Preparation:**
 ```bash
@@ -119,11 +122,9 @@ tabix -p bed atac_fragments.tsv.gz
 
 **Pre-processed fragment files**
 
-If your fragment files are already properly sorted and filtered to main chromosomes, you can skip preprocessing steps by setting `fragments_preprocessed: True` in your config file. Use this option only if you are certain that your files:
-1. Are sorted with `sort -k1,1 -k2,2n` (chromosome then numerical position)
-2. Only contain fragments on chromosomes present in the chromosome sizes reference file
+If your fragment files are already properly filtered to standard chromosomes, you can skip preprocessing steps by setting `fragments_preprocessed: True` in your config file. This option allows you to skip the filtering step of the pipeline.  Use this option only if you are certain that your files only contain fragments on chromosomes present in the chromosome sizes reference file (default: chr1-chr22, chrM, chrX, chrY).
 
-This option allows you to skip the sorting and filtering steps of the pipeline, which can be very resource intensive for large fragment files.
+Your fragment file must be sorted and indexed to run scE2G, regardless of how you set `fragments_preprocessed`.
 
 **Cell filtering configurations**
 
