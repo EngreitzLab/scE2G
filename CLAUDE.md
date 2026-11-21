@@ -172,6 +172,52 @@ WTC11 differentiation timecourse (iPSC → EC, 5 cell types): `results/2026_0210
 - Bigwigs: `results/2026_0210_WTC11_EC/{cell_type}/ATAC_norm.bw`
 - Example gene for locus plots: KDR (highly expressed in d4_ec)
 
+## Development notes
+
+### Updating the Singularity container
+
+The container image is hosted on SyLabs Cloud (`library://mayasheth/e2g/sce2g_container:latest`,
+referenced from the `container:` key in `config/config.yaml` and `config/config_training.yaml`)
+and bakes in the three pipeline conda envs (`abcenv`, `encode_re2g`, `sc_e2g`) so
+`--use-singularity` runs skip building them locally. Whenever a pipeline conda env file changes
+— most often `workflow/envs/sc_e2g.yml` — the container is out of date, and `--use-conda
+--use-singularity` runs fail immediately with `Unable to find environment in container image`
+(Snakemake's env-content hash no longer matches what's baked into the image).
+
+1. Regenerate the env hash(es):
+   ```bash
+   snakemake --containerize > /tmp/sce2g_container_new.def
+   diff /tmp/sce2g_container_new.def workflow/envs/sce2g_container.def
+   ```
+   Only the env(s) whose `.yml` actually changed get a new hash. Apply just those changed lines
+   to `workflow/envs/sce2g_container.def` — three spots per env (`%files`, the `mkdir
+   -p`/`mamba env create` pair in `%post`, and the corresponding `%help`/`%runscript` echo
+   lines) plus the aggregate `io.github.snakemake.conda_env_hash` label. See commits `c9e3a32`
+   and `2c6e173` for worked examples of this diff.
+2. Build and push the updated image to SyLabs Cloud (manual step, requires a SyLabs
+   account/auth token):
+   ```bash
+   singularity build --remote scE2G_container.sif workflow/envs/sce2g_container.def
+   singularity push scE2G_container.sif library://mayasheth/e2g/sce2g_container:latest
+   ```
+3. Verify with `bash tests/test_singularity.sh` (chr22 test data, diffs predictions against
+   `tests/expected_output/`). For a full-genome conda-vs-singularity spot check, see the
+   `cmp`/`zcat` commands recorded in commit `932a961`'s message.
+
+`*.sif` files are gitignored — the built image lives on SyLabs Cloud, not in the repo.
+
+**Computing the hash for a branch you haven't checked out** (e.g. a collaborator's PR branch,
+without disturbing your own working tree/uncommitted files): use `git worktree add <path> -b
+<branch> origin/<branch>` rather than `git checkout`. Sherlock's system `git` is 1.8.3.1, which
+predates `worktree` — first run `module load system git/2.45.1`. Run `git submodule update
+--init --recursive` inside the new worktree, then point `snakemake --containerize` at it
+explicitly (`-s <path>/workflow/Snakefile --configfile <path>/config/config.yaml --directory
+<path>`) instead of `cd`-ing there. If the target branch is missing an env addition that's
+already on `main`/`dev` (i.e. it branched before that commit), the real post-merge hash isn't
+what containerizing the branch alone gives you — temporarily merge in the missing `.yml` lines
+by hand before containerizing, so the computed hash matches what the env file will actually
+look like after the branches merge, then revert that temporary edit before committing anything.
+
 ## Important notes
 
 - `ENCODE_rE2G` is a git submodule that itself nests `ABC` as a submodule - run `git submodule update --init --recursive` if missing

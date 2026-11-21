@@ -1,0 +1,2 @@
+cluster	rna_matrix_file	atac_frag_file	HiC_file	HiC_type	HiC_resolution	alt_TSS	alt_genes	model_dir
+d4_ec	/oak/stanford/groups/engreitz/Users/rosaxma/share/Dulguun/2408_EC_timepoints_2/subset/rna_mtx/d4_ec/matrix	/oak/stanford/groups/engreitz/Users/rosaxma/share/Dulguun/2408_EC_timepoints_2/barcodes/pseudobulk/combinedFrag/Fragments/d4_ec_atac.sorted.fragments.bed.gz						models/multiome_powerlaw_v3

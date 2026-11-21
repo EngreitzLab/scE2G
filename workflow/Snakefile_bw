@@ -1,0 +1,118 @@
+from snakemake.utils import min_version
+min_version("7.0")
+
+import pandas as pd
+import os
+import yaml
+
+
+conda: "mamba"
+
+
+include: os.path.join("rules", "utils.smk")
+
+## Update paths in the config to be compatible with github submodules
+# Need to manually make results_dir an absolute path since above may
+# not work if results_dir folder isn't created
+# If results_dir is already an absolute path, this is a no-op
+config = make_paths_absolute(config, os.getcwd())
+config["results_dir"] = os.path.join(os.getcwd(), config["results_dir"])
+
+## Define global variables
+if "IGV_dir" in config:
+	IGV_DIR = config["IGV_dir"]
+else:
+	IGV_DIR = config["results_dir"]
+
+
+if "fragments_preprocessed" not in config:
+	config["fragments_preprocessed"] = False
+
+if "RNA_matrix_filtered" not in config:
+	config["RNA_matrix_filtered"] = True
+
+RESULTS_DIR = config["results_dir"] 
+SCRIPTS_DIR = os.path.join(os.getcwd(), "workflow", "scripts")
+CELL_CLUSTER_DF = pd.read_table(config["cell_clusters"]).set_index("cluster", drop=False)
+WORKFLOW_DIR = os.getcwd()
+
+## Convert cell cluster config to a biosample config for the ABC pipeline
+## Treat each cell cluster as a distinct biosample
+config["ABC_BIOSAMPLES"] = os.path.join(
+	RESULTS_DIR, 
+	"tmp", 
+	"config_abc_biosamples.tsv"
+	)
+make_biosample_config(
+	config["cell_clusters"],
+	config["ABC_BIOSAMPLES"],
+	RESULTS_DIR
+)
+
+## Import ENCODE_rE2G pipeline as a reusable module 
+encode_e2g_config = get_e2g_config(config, config["encode_re2g_dir"])
+
+module encode_e2g:
+	snakefile:
+		os.path.join(config["encode_re2g_dir"], "workflow", "Snakefile")
+	config: encode_e2g_config
+
+## Update scE2G config with consistent references
+config = update_scE2G_config(config, encode_e2g_config, config["encode_re2g_dir"])
+
+## Include Snakemake rules from ENCODE_rE2G
+use rule * from encode_e2g exclude generate_e2g_predictions, format_external_features_config, get_stats, generate_plots, all
+
+# expand biosamples config
+BIOSAMPLE_DF = encode_e2g.ABC.enable_retry(
+	pd.read_table, 
+	func_args={'filepath_or_buffer': config["ABC_BIOSAMPLES"]}
+)
+BIOSAMPLE_DF = encode_e2g.expand_biosample_df(BIOSAMPLE_DF)
+
+## Include additional Snakemake rules
+include: os.path.join("rules", "frag_to_tagAlign.smk")
+include: os.path.join("rules", "make_kendall_pairs.smk")
+include: os.path.join("rules", "generate_atac_matrix.smk")
+include: os.path.join("rules", "compute_kendall.smk")
+include: os.path.join("rules", "arc_e2g.smk")
+include: os.path.join("rules", "add_external_features.smk")
+include: os.path.join("rules", "sc_predictions.smk")
+
+
+## Define the final outputs of the pipeline
+output_files = []
+biosample_model = list(zip(BIOSAMPLE_DF["biosample"], BIOSAMPLE_DF["model_dir_base"]))
+biosample_model_threshold = list(zip(BIOSAMPLE_DF["biosample"], BIOSAMPLE_DF["model_dir_base"], BIOSAMPLE_DF["model_threshold"]))
+
+encode_e2g_predictions = [os.path.join(RESULTS_DIR, biosample, model_name, "encode_e2g_predictions.tsv.gz") for biosample,model_name in biosample_model]
+prediction_stats = [os.path.join(RESULTS_DIR, biosample, model_name, f"encode_e2g_predictions_threshold{threshold}_stats.tsv") for biosample,model_name,threshold in biosample_model_threshold]
+gene_lists = [os.path.join(RESULTS_DIR, biosample, model_name, "scE2G_gene_list.tsv.gz") for biosample,model_name in biosample_model]
+element_lists = [os.path.join(RESULTS_DIR, biosample, model_name, "scE2G_element_list.tsv.gz") for biosample,model_name in biosample_model]
+all_qc = os.path.join(RESULTS_DIR, "qc_plots", "predictions_qc_report.html")
+
+bedpe_files = [os.path.join(IGV_DIR, biosample, model_name, f"encode_e2g_predictions_threshold{threshold}.bedpe") for biosample,model_name,threshold in biosample_model_threshold]
+atac_bw = [os.path.join(IGV_DIR, biosample, "ATAC.bw") for biosample in BIOSAMPLE_DF["biosample"]]
+atac_bw_norm = [os.path.join(IGV_DIR, biosample, "ATAC_norm.bw") for biosample in BIOSAMPLE_DF["biosample"]]
+
+model_perf = os.path.join(RESULTS_DIR, "crispr_benchmarking_performance_summary.tsv")
+
+## Choose relevant output files
+output_files.extend(encode_e2g_predictions)
+output_files.extend(prediction_stats)
+output_files.append(gene_lists)
+output_files.append(element_lists)
+output_files.append(all_qc)
+
+if config["make_IGV_tracks"]:
+	output_files.extend(bedpe_files)
+	#output_files.extend(atac_bw)
+	output_files.extend(atac_bw_norm)
+
+if config["benchmark_performance"]:
+ 	output_files.append(model_perf)
+
+rule all:
+	input: 
+		atac_bw_norm
+		
