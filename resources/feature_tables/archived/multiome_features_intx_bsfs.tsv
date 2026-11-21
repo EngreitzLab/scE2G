@@ -1,0 +1,8 @@
+feature	input_col	second_input	aggregate_function	fill_value	nice_name
+numCandidateEnhGene_2	numCandidateEnhGene	numCandidateEnhGene	max	0	(# peaks between E & P)^2
+normalizedATAC_enh_x_numCandidateEnhGene	normalized_atac_enh	numCandidateEnhGene	max	0	ATAC at E * # peaks between E & P
+normalizedATAC_enh	normalized_atac_enh	NA	mean	0	ATAC at E
+distanceToTSS_x_ARC	distance	ARC.E2G.Score	mean	0	Distance to TSS * ARC-E2G score
+numTSSEnhGene_x_distanceToTSS	numTSSEnhGene	distance	max	0	# TSSs between E & P * distance to TSS
+distanceToTSS_x_ubiqExpressed	distance	is_ubiquitous_uniform	max	0	Distance to TSS * ubiquitous expression
+ARC.E2G.Score	ARC.E2G.Score	NA	mean	0	ARC-E2G score

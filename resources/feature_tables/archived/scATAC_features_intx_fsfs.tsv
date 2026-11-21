@@ -1,0 +1,7 @@
+feature	input_col	second_input	aggregate_function	fill_value	nice_name
+ABC.Score	powerlaw.Score	NA	sum	0	ABC score
+ubiqExpressed_x_ABC	is_ubiquitous_uniform	powerlaw.Score	mean	0	Ubiquitous expression * ABC score
+numTSSEnhGene_x_ABC	numTSSEnhGene	powerlaw.Score	mean	0	# TSSs between E & P * ABC score
+normalizedATAC_prom_x_ABC	normalized_atac_prom	powerlaw.Score	mean	0	ATAC at P * ABC score
+numCandidateEnhGene_x_ABC	numCandidateEnhGene	powerlaw.Score	mean	0	# peaks between E & P * ABC score
+numTSSEnhGene_x_ubiqExpressed	numTSSEnhGene	is_ubiquitous_uniform	max	0	# TSSs between E & P * ubiquitous expression

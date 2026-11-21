@@ -1,0 +1,41 @@
+feature	input_col	second_input	aggregate_function	fill_value	nice_name
+numTSSEnhGene	numTSSEnhGene	NA	max	0	# TSSs between E and P
+distanceToTSS	distance	NA	min	NA	Distance to TSS
+normalizedATAC_enh	normalized_atac_enh	NA	mean	0	ATAC signal at E
+normalizedATAC_prom	TargetGenePromoterActivityQuantile	NA	mean	0	ATAC signal at P (quantile)
+numNearbyEnhancers	numNearbyEnhancers	NA	max	0	# peaks within 5Kb of E
+sumNearbyEnhancers	sumNearbyEnhancers	NA	max	0	Activity of other peaks within 5Kb of E
+ubiqExpressed	is_ubiquitous_uniform	NA	max	0	Ubiquitous expression
+numCandidateEnhGene	numCandidateEnhGene	NA	max	0	# peaks between E and P
+powerlawContact	powerlaw_contact	NA	mean	0	Power law contact
+ABC.Score	powerlaw.Score	NA	sum	0	ABC score
+numTSSEnhGene_2	numTSSEnhGene	numTSSEnhGene	max	0	
+distanceToTSS_2	distance	distance	min	NA	
+normalizedATAC_enh_2	normalized_atac_enh	normalized_atac_enh	mean	0	
+normalizedATAC_prom_2	TargetGenePromoterActivityQuantile	TargetGenePromoterActivityQuantile	mean	0	
+numNearbyEnhancers_2	numNearbyEnhancers	numNearbyEnhancers	max	0	
+sumNearbyEnhancers_2	sumNearbyEnhancers	sumNearbyEnhancers	max	0	
+numCandidateEnhGene_2	numCandidateEnhGene	numCandidateEnhGene	max	0	
+powerlawContact_2	powerlaw_contact	powerlaw_contact	mean	0	
+ABC.Score_2	powerlaw.Score	powerlaw.Score	sum	0	
+ABC_numTSS	powerlaw.Score	numTSSEnhGene	sum	0	
+ABC_distance	powerlaw.Score	distance	sum	0	
+ABC_ATACenh	powerlaw.Score	normalized_atac_enh	sum	0	
+ABC_ATACprom	powerlaw.Score	TargetGenePromoterActivityQuantile	sum	0	
+ABC_numNearbyEnhancers	powerlaw.Score	numNearbyEnhancers	sum	0	
+ABC_sumNearbyEnhancers	powerlaw.Score	sumNearbyEnhancers	sum	0	
+ABC_numCandidateElements	powerlaw.Score	numCandidateEnhGene	sum	0	
+ABC_contact	powerlaw.Score	powerlaw_contact	sum	0	
+ATACenh_numTSSEnhGene	normalized_atac_enh	numTSSEnhGene	sum	0	
+ATACenh_distance	normalized_atac_enh	distance	sum	0	
+ATACenh_ATACprom	normalized_atac_enh	TargetGenePromoterActivityQuantile	sum	0	
+ATACenh_numNearbyEnhancers	normalized_atac_enh	numNearbyEnhancers	sum	0	
+ATACenh_sumNearbyEnhancers	normalized_atac_enh	sumNearbyEnhancers	sum	0	
+ATACenh_numCandidateElements	normalized_atac_enh	numCandidateEnhGene	sum	0	
+ATACenh_contact	normalized_atac_enh	powerlaw_contact	sum	0	
+ATACprom_numTSS	TargetGenePromoterActivityQuantile	numTSSEnhGene	sum	0	
+ATACprom_distance	TargetGenePromoterActivityQuantile	distance	sum	0	
+ATACprom_numNearbyEnhancers	TargetGenePromoterActivityQuantile	numNearbyEnhancers	sum	0	
+ATACprom_sumNearbyEnhancers	TargetGenePromoterActivityQuantile	sumNearbyEnhancers	sum	0	
+ATACprom_numCandidateElements	TargetGenePromoterActivityQuantile	numCandidateEnhGene	sum	0	
+ATACprom_contact	TargetGenePromoterActivityQuantile	powerlaw_contact	sum	0	

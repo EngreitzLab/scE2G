@@ -46,7 +46,7 @@ Required input data includes (refer to the example data in the `resources/exampl
 	- Accepted formats for RNA matrix:
 		1. .csv.gz format
 		2. .h5ad or .h5 format
-		3. Directory with sparse matrix files from 10X (matrix.mtx, genes.tsv or features.tsv, and barcodes.tsv). Note that files are read with the argument `gene.column = 1`. 
+		3. Directory with sparse matrix files from 10X (matrix.mtx(.gz), genes.tsv or features.tsv, and barcodes.tsv). Note that files are read with the argument `gene.column = 1`. 
 	- By default, gene names in the RNA matrix are mapped to our gene reference file via Ensembl ID using gene annotations from the GENCODE v43 release (included in `resources/gencode.v43.chr_patch_hapl_scaff.annotation.gtf.gz`). You can modify the annotations to another GENCODE version in in the `gene_annotation` field of `config/config.yaml`. For example, CellRanger uses the GENCODE v32 gene annotations by default; this annotation file can be downloaded [here](https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_32/gencode.v32.annotation.gtf.gz).
 
 To configure the pipeline:
@@ -58,7 +58,7 @@ To configure the pipeline:
 
 Running the pipeline:
 ```
-snakemake -j1 --use-conda
+snakemake --configfile config/config.yml -j1 --use-conda 
 ```
 This command make take a while the first time you run it, as it needs to build the conda environments. 
 But if it takes more than 1 hour, that's usually a bad sign, meaning that you're not using mamba and/or need more memory to build the environment.
