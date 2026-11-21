@@ -1,7 +1,9 @@
 ## get list of cells defining this cluster
 def get_cell_barcode_file(RNA_filt):
 	if RNA_filt:
-		return RESULTS_DIR
+		# A pre-filtered RNA matrix needs no barcode list, so this placeholder is
+		# never read; ancient() keeps the dependency but ignores its mtime
+		return ancient(RESULTS_DIR)
 	else:
 		return os.path.join(RESULTS_DIR, "{cluster}", "Kendall", "cell_barcodes.txt")
 

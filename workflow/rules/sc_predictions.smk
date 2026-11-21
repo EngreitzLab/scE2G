@@ -121,7 +121,9 @@ def get_gex_file(wildcards):
 		if val == "Kendall" or val == "ARC":
 			return os.path.join(RESULTS_DIR, wildcards.cluster, "Kendall", "gene_expression_metrics.tsv.gz")
 		else:
-			return RESULTS_DIR
+			# compute_kendall never ran, so there is no gene expression file;
+			# ancient() keeps the dependency but ignores this placeholder's mtime
+			return ancient(RESULTS_DIR)
 
 rule element_and_gene_summaries:
 	input:
@@ -147,7 +149,9 @@ def get_count_file(wildcards, metric):
 		if val == "Kendall" or val == "ARC":
 			return os.path.join(RESULTS_DIR, wildcards.cluster, f"{metric}.txt")
 		else:
-			return RESULTS_DIR
+			# compute_kendall never ran, so there is no count file; this placeholder
+			# is never read, and ancient() ignores its mtime
+			return ancient(RESULTS_DIR)
 
 rule get_stats_per_model_per_cluster:
 	input:

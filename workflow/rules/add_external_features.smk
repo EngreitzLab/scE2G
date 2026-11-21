@@ -29,7 +29,9 @@ def features_to_generate(wildcards):
 		elif val == "ARC":
 			return os.path.join(RESULTS_DIR, "{sample}", "ARC", "EnhancerPredictionsAllPutative_ARC.tsv.gz")
 		else:
-			return RESULTS_DIR
+			# No features to generate, so this placeholder is never read;
+			# ancient() keeps the dependency but ignores its mtime
+			return ancient(RESULTS_DIR)
 
 # activate generation of Kendall/ARC and format external_features_config
 rule make_external_features_config:
