@@ -4,7 +4,8 @@ min_version("7.0")
 import pandas as pd
 import os
 import yaml
-
+import itertools
+import pickle
 
 configfile: "config/config.yaml"
 conda: "mamba"
@@ -12,34 +13,29 @@ conda: "mamba"
 
 include: os.path.join("rules", "utils.smk")
 
-## Update paths in the config to be compatible with github submodules
-# Need to manually make results_dir an absolute path since above may
-# not work if results_dir folder isn't created
-# If results_dir is already an absolute path, this is a no-op
+## Update paths in the config to be compatible with github submodules, define global variables
+SCRATCH_DIR = os.path.join(config["scratch_dir"], config["results_dir"])
 config = make_paths_absolute(config, os.getcwd())
-config["results_dir"] = os.path.join(os.getcwd(), config["results_dir"])
 
-## Define global variables
-if "IGV_dir" in config:
-	IGV_DIR = config["IGV_dir"]
-else:
-	IGV_DIR = config["results_dir"]
-RESULTS_DIR = config["results_dir"] 
+RESULTS_DIR = SCRATCH_DIR 
+IGV_DIR = RESULTS_DIR
+RESULTS_DIR_OAK = os.path.join(os.getcwd(), config["results_dir"])
 SCRIPTS_DIR = os.path.join(os.getcwd(), "workflow", "scripts")
-CELL_CLUSTER_DF = pd.read_table(config["cell_clusters"]).set_index("cluster", drop=False)
+FEATURE_TABLE = os.path.join(config["model_dir_use"], "feature_table.tsv")
 
-## Convert cell cluster config to a biosample config for the ABC pipeline
-## Treat each cell cluster as a distinct biosample
-config["ABC_BIOSAMPLES"] = os.path.join(
-	RESULTS_DIR, 
-	"tmp", 
-	"config_abc_biosamples.tsv"
-	)
-make_biosample_config(
-	config["cell_clusters"],
-	config["ABC_BIOSAMPLES"],
-	RESULTS_DIR
-)
+## Read in config files to define cell clusters config for random samples
+CT_CONFIG = pd.read_table(config["cell_type_config"]).set_index("L3", drop = False)
+L2_L3_DICT = CT_CONFIG.groupby("L2")["L3"].apply(list).to_dict() # list of L3 per L2
+L3_L2_DICT = {l3_id: l2_id for l2_id, l3_ids in L2_L3_DICT.items() for l3_id in l3_ids}
+N_ITER = config["n_iterations"]
+
+config["cell_clusters"] = os.path.join(RESULTS_DIR_OAK, "tmp", f"config_cell_clusters_iter{N_ITER}.tsv")
+CELL_CLUSTER_DF = get_cell_cluster_config(CT_CONFIG, config["model_dir_use"], N_ITER,
+	config["cell_clusters"], RESULTS_DIR).set_index("cluster", drop=False)
+
+## Format cell clusters config for ABC and beyond
+config["ABC_BIOSAMPLES"] = os.path.join(RESULTS_DIR_OAK, "tmp", "config_abc_biosamples.tsv")
+make_biosample_config(config["cell_clusters"], config["ABC_BIOSAMPLES"], RESULTS_DIR)
 
 ## Import ENCODE_rE2G pipeline as a reusable module 
 encode_e2g_config = get_e2g_config(config, config["encode_re2g_dir"])
@@ -68,40 +64,47 @@ include: os.path.join("rules", "arc_e2g.smk")
 include: os.path.join("rules", "add_external_features.smk")
 include: os.path.join("rules", "sc_predictions.smk")
 
+include: os.path.join("rules", "generate_sample_inputs.smk")
+include: os.path.join("rules", "compare_permutations.smk")
+
+
+# 0. define cell cluster config!
+
+# 1: get proportions of each cell type: save list of all barcodes from fragment files with L3 annotations;
+	# save number of cells to select per L3, per L2 [save as rds]
+	# 
+# 2: save barcodes for each iteration: (one job)
+	# a. select 30k cells, X from each cell type
+	# b. 5 true L2; 15 true L3 (save txt file with barcodes)
+	# c. 5 scrambled L2 (size matched) from total 30k
+	# d. , 15 scrambled L3 from true L2
+	# dont worry about the 30k for now? or select a smaller sample like 1/3
+# 3: FOR EACH SAMPLE: save bc L3 (input L3 frag file, L3 rna file); save  L2; save bc L1
+	# use cmd line for fragments (also tbi)
+	# use R for count matrix to make sure genes match? (for anyhting besides L3 subsets)
+
+
+
+
+####################################################################################
 
 ## Define the final outputs of the pipeline
 output_files = []
 biosample_model = list(zip(BIOSAMPLE_DF["biosample"], BIOSAMPLE_DF["model_dir_base"]))
 biosample_model_threshold = list(zip(BIOSAMPLE_DF["biosample"], BIOSAMPLE_DF["model_dir_base"], BIOSAMPLE_DF["model_threshold"]))
 
-encode_e2g_predictions = [os.path.join(RESULTS_DIR, biosample, model_name, "encode_e2g_predictions.tsv.gz") for biosample,model_name in biosample_model]
-prediction_stats = [os.path.join(RESULTS_DIR, biosample, model_name, f"encode_e2g_predictions_threshold{threshold}_stats.tsv") for biosample,model_name,threshold in biosample_model_threshold]
-gene_lists = [os.path.join(RESULTS_DIR, biosample, model_name, "scE2G_gene_list.tsv.gz") for biosample,model_name in biosample_model]
-element_lists = [os.path.join(RESULTS_DIR, biosample, model_name, "scE2G_element_list.tsv.gz") for biosample,model_name in biosample_model]
-all_qc = os.path.join(RESULTS_DIR, "qc_plots", "all_qc_stats.tsv")
-
-bedpe_files = [os.path.join(IGV_DIR, biosample, model_name, f"encode_e2g_predictions_threshold{threshold}.bedpe") for biosample,model_name,threshold in biosample_model_threshold]
-atac_bw = [os.path.join(IGV_DIR, biosample, "ATAC.bw") for biosample in BIOSAMPLE_DF["biosample"]]
-atac_bw_norm = [os.path.join(IGV_DIR, biosample, "ATAC_norm.bw") for biosample in BIOSAMPLE_DF["biosample"]]
-
-model_perf = os.path.join(RESULTS_DIR, "crispr_benchmarking_performance_summary.tsv")
+prediction_files = [os.path.join(RESULTS_DIR, biosample, model_name, f"encode_e2g_predictions_threshold{threshold}_stats.tsv") for biosample,model_name,threshold in biosample_model_threshold]
+totals = [os.path.join(RESULTS_DIR_OAK, "L1_totals.tsv")]
+stats = [os.path.join(RESULTS_DIR_OAK, "qc_plots", "all_qc_stats.tsv")]
 
 ## Choose relevant output files
-output_files.extend(encode_e2g_predictions)
-output_files.extend(prediction_stats)
-output_files.append(gene_lists)
-output_files.append(element_lists)
-output_files.append(all_qc)
+output_files.extend(prediction_files)
+output_files.extend(totals)
+output_files.extend(stats)
 
-if config["make_IGV_tracks"]:
-	output_files.extend(bedpe_files)
-	output_files.extend(atac_bw)
-	output_files.extend(atac_bw_norm)
-
-if config["benchmark_performance"]:
- 	output_files.append(model_perf)
 
 rule all:
 	input: 
+		#l3_counts = os.path.join(RESULTS_DIR, "reference", "L3_counts.pkl")
 		output_files
 		

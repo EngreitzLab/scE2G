@@ -88,7 +88,7 @@ rule element_and_gene_summaries:
 		"../scripts/prediction_qc/generate_element_gene_lists.R"
 
 def get_num_UMI_file(wildcards):
-	with checkpoints.features_required.get(sample=wildcards.cluster).output.to_generate.open() as f:
+	with checkpoints.features_required.get().output.to_generate.open() as f:
 		val = f.read().strip()
 		if val == "Kendall" or val == "ARC":
 			return os.path.join(RESULTS_DIR, wildcards.cluster, "umi_count.txt")
@@ -124,13 +124,13 @@ rule plot_stats:
 	resources:
 		mem_mb=determine_mem_mb
 	output: 
-		all_stats = os.path.join(RESULTS_DIR, "qc_plots", "all_qc_stats.tsv"),
-		ds_stats = os.path.join(RESULTS_DIR, "qc_plots", "dataset_metrics.pdf"),
-		enh_stats = os.path.join(RESULTS_DIR, "qc_plots", "enhancer_metrics.pdf"),
-		eg_stats = os.path.join(RESULTS_DIR, "qc_plots", "eg_metrics.pdf"),
-		gene_stats  = os.path.join(RESULTS_DIR, "qc_plots", "gene_metrics.pdf"),
-		dist_size_stats = os.path.join(RESULTS_DIR, "qc_plots", "distance_and_size_metrics.pdf"),
-		all_distributions = os.path.join(RESULTS_DIR, "qc_plots", "qc_metric_distributions.pdf")
+		all_stats = os.path.join(RESULTS_DIR_OAK, "qc_plots", "all_qc_stats.tsv"),
+		ds_stats = os.path.join(RESULTS_DIR_OAK, "qc_plots", "dataset_metrics.pdf"),
+		enh_stats = os.path.join(RESULTS_DIR_OAK, "qc_plots", "enhancer_metrics.pdf"),
+		eg_stats = os.path.join(RESULTS_DIR_OAK, "qc_plots", "eg_metrics.pdf"),
+		gene_stats  = os.path.join(RESULTS_DIR_OAK, "qc_plots", "gene_metrics.pdf"),
+		dist_size_stats = os.path.join(RESULTS_DIR_OAK, "qc_plots", "distance_and_size_metrics.pdf"),
+		all_distributions = os.path.join(RESULTS_DIR_OAK, "qc_plots", "qc_metric_distributions.pdf")
 	script:
 		"../scripts/prediction_qc/plot_all_qc_stats.R"
 

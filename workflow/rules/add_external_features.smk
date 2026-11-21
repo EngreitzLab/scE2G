@@ -1,8 +1,8 @@
 checkpoint features_required:
 	input:
-		feature_table_file = os.path.join(RESULTS_DIR, "{sample}", "feature_table.tsv")
+		feature_table_file = FEATURE_TABLE
 	output:
-		to_generate = os.path.join(RESULTS_DIR, "{sample}", "to_generate.txt") # file with "Kendall" "ARC" or "Neither"
+		to_generate = os.path.join(RESULTS_DIR, "to_generate.txt") # file with "Kendall" "ARC" or "Neither"
 	run:
 		Kendall = False
 		ARC = False
@@ -22,7 +22,7 @@ checkpoint features_required:
 
 # return file paths for features to generate
 def features_to_generate(wildcards):
-	with checkpoints.features_required.get(sample=wildcards.sample).output.to_generate.open() as f:
+	with checkpoints.features_required.get().output.to_generate.open() as f:
 		val = f.read().strip()
 		if val == "Kendall":
 			return os.path.join(RESULTS_DIR, "{sample}", "Kendall", "Pairs.Kendall.tsv.gz")

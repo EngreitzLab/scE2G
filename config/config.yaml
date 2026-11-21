@@ -1,10 +1,16 @@
 
 ### INPUT
-cell_clusters: "config/config_cell_clusters.tsv"
+cell_type_config: "config/config_cell_types.tsv" # L3 --> L2 --> L1 mapping; fragment files for the 15
+
+n_iterations: 10
+seed_multiplier: 13
+n_sample: 30000 # about 500 cells for smallest cell type
+n_L1_sample: 10000 # because it's hard to run E2G on the 30k 
+model_dir_use: models/multiome_powerlaw_v3
 
 ### OUTPUT
-results_dir: "results/2025_0124_chr22p_test/"
-IGV_dir: "results/example_results/"
+scratch_dir: /scratch/users/shethm/scE2G_permute_and_compare
+results_dir: results/2025_0220_iter10_seed13
 
 ### OUTPUT OPTIONS
 benchmark_performance: False # only set to True if all clusters are K562
